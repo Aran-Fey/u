@@ -3,10 +3,10 @@ from .duration import Duration, seconds
 from .one import One, one
 
 
-__all__ = ["Frequency", "hertz"]
+__all__ = ["Frequency", "hertz", "hertzes", "Hz"]
 
 
 Frequency = Div[One, Duration]
 
-hertz = one / seconds
+hertz = hertzes = Hz = one / seconds
 hertz.symbol = "Hz"

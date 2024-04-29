@@ -1,7 +1,7 @@
 from ..quantity_and_unit import Quantity, Unit
 
 
-__all__ = ["One", "one"]
+__all__ = ["One", "ones", "one"]
 
 
 class One(Quantity):
@@ -11,4 +11,4 @@ class One(Quantity):
     """
 
 
-one = Unit[One]("1", 1)
+ones = one = Unit[One]("1", 1)
