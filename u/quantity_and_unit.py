@@ -89,13 +89,13 @@ class Quantity:
             self.unit,  # type: ignore
         )  # type: ignore
 
-    def __mul__(self, quantity: Quantity) -> Self:
+    def __mul__(self, quantity: Q) -> Mul[Self, Q]:
         return Quantity(
             self._value * quantity._value,
             self.unit * quantity.unit,  # type: ignore
         )  # type: ignore
 
-    def __truediv__(self, quantity: Quantity) -> Self:
+    def __truediv__(self, quantity: Q) -> Div[Self, Q]:
         return Quantity(
             self._value / quantity._value,
             self.unit / quantity.unit,  # type: ignore
