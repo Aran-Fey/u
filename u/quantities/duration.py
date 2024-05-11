@@ -1,8 +1,11 @@
-from ..quantity_and_unit import Quantity, Unit
+from ..quantity import Quantity
+from ..quantity_caps import QUANTITY
+from ..unit import Unit
 
 
 # fmt: off
 __all__ = [
+    "DURATION",
     "Duration",
     "seconds", "second", "sec", "s",
     "minutes", "minute", "min",
@@ -17,16 +20,19 @@ __all__ = [
 # fmt: on
 
 
-class Duration(Quantity):
+class DURATION(QUANTITY):
     pass
 
 
-seconds = second = sec = s = Unit[Duration]("s", 1)
-minutes = minute = min = Unit[Duration]("min", 60)
-hours = hour = h = Unit[Duration]("h", 3_600)
-days = day = d = Unit[Duration]("d", 86_400)
-weeks = week = wk = w = Unit[Duration]("wk", 86_400)
-years = year = yr = y = Unit[Duration]("yr", 31_557_600)
-decades = decade = dec = Unit[Duration]("dec", 315_576_000)
-centuries = century = cent = c = Unit[Duration]("cent", 3_155_760_000)
-millenia = millenium = mil = ka = ky = Unit[Duration]("mil", 31_557_600_000)
+Duration = Quantity[DURATION]
+
+
+seconds = second = sec = s = Unit(Duration, "s", 1)
+minutes = minute = min = Unit(Duration, "min", 60)
+hours = hour = h = Unit(Duration, "h", 3_600)
+days = day = d = Unit(Duration, "d", 86_400)
+weeks = week = wk = w = Unit(Duration, "wk", 86_400)
+years = year = yr = y = Unit(Duration, "yr", 31_557_600)
+decades = decade = dec = Unit(Duration, "dec", 315_576_000)
+centuries = century = cent = c = Unit(Duration, "cent", 3_155_760_000)
+millenia = millenium = mil = ka = ky = Unit(Duration, "mil", 31_557_600_000)

@@ -1,12 +1,15 @@
-from ..quantity_and_unit import Div
-from .duration import Duration, seconds, hours
-from .distance import Distance, meters, kilometers
+from .distance import DISTANCE, meters, kilometers
+from .duration import DURATION, seconds, hours
+from ..quantity import Quantity
+from ..quantity_caps import DIV
 
 
-__all__ = ["Speed", "meters_per_second", "mps", "kilometers_per_hour", "kph"]
+__all__ = ["SPEED", "Speed", "meters_per_second", "mps", "kilometers_per_hour", "kph"]
 
 
-Speed = Div[Distance, Duration]
+SPEED = DIV[DISTANCE, DURATION]
+
+Speed = Quantity[SPEED]
 
 meters_per_second = mps = meters / seconds
 kilometers_per_hour = kph = kilometers / hours

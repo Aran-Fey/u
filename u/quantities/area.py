@@ -1,9 +1,11 @@
-from ..quantity_and_unit import Mul
-from .distance import Distance, meter, kilometer
+from .distance import DISTANCE, meter, kilometer
+from ..quantity import Quantity
+from ..quantity_caps import MUL
 
 
 # fmt: off
 __all__ = [
+    "AREA",
     "Area",
     "square_meters", "square_meter", "m2",
     "square_kilometers", "square_kilometer", "km2",
@@ -11,7 +13,9 @@ __all__ = [
 # fmt: on
 
 
-Area = Mul[Distance, Distance]
+AREA = MUL[DISTANCE, DISTANCE]
 
-square_meters = square_meter = m2 = meter * meter
-square_kilometers = square_kilometer = km2 = kilometer * kilometer
+Area = Quantity[AREA]
+
+square_meters = square_meter = m2 = meter**2
+square_kilometers = square_kilometer = km2 = kilometer**2

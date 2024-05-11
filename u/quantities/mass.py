@@ -1,9 +1,12 @@
 from ..prefixes import nano, micro, milli, centi, deci, kilo, mega
-from ..quantity_and_unit import Quantity, Unit
+from ..quantity import Quantity
+from ..quantity_caps import QUANTITY
+from ..unit import Unit
 
 
 # fmt: off
 __all__ = [
+    "MASS",
     "Mass",
     "nanograms", "nanogram", "ng",
     "micrograms", "microgram", "μg",
@@ -19,12 +22,15 @@ __all__ = [
 # fmt: on
 
 
-class Mass(Quantity):
+class MASS(QUANTITY):
     pass
 
 
-grams = gram = g = Unit[Mass]("g", 1)
-tons = ton = t = Unit[Mass]("t", 1_000_000)
+Mass = Quantity[MASS]
+
+
+grams = gram = g = Unit(Mass, "g", 1)
+tons = ton = t = Unit(Mass, "t", 1_000_000)
 
 nanograms = nanogram = ng = nano(grams)
 micrograms = microgram = μg = micro(grams)

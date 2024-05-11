@@ -1,14 +1,18 @@
-from ..quantity_and_unit import Quantity, Unit
+from ..quantity import Quantity
+from ..quantity_caps import QUANTITY
+from ..unit import Unit
+
+__all__ = ["ONE", "One", "ones", "one"]
 
 
-__all__ = ["One", "ones", "one"]
-
-
-class One(Quantity):
+class ONE(QUANTITY):
     """
-    Represents the absence of a quantity. Used to create "inverted" quantities like `Frequency =
-    Div[One, Duration]`.
+    Represents the absence of a quantity. Used to create "inverted" quantities like `FREQUENCY =
+    DIV[ONE, DURATION]`.
     """
 
 
-ones = one = Unit[One]("1", 1)
+One = Quantity[ONE]
+
+
+ones = one = Unit(One, "1", 1)

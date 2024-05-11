@@ -1,7 +1,8 @@
+import typing as t
+
 import pytest
 
 import u
-from u import Quantity, Unit
 
 
 @pytest.mark.parametrize(
@@ -20,7 +21,7 @@ from u import Quantity, Unit
         (u.square_meters(1_000_000), u.square_kilometers, 1),
     ],
 )
-def test_to_number(value: Quantity, unit: Unit, expected_result: float):
+def test_to_number(value: u.Quantity, unit: u.Unit, expected_result: float):
     result = value.to_number(unit)
     assert result == pytest.approx(expected_result)
 
@@ -32,7 +33,26 @@ def test_to_number(value: Quantity, unit: Unit, expected_result: float):
         (u.kilometers(3.5), "3.5km"),
         (u.meters_per_second(5), "5m/s"),
         (u.square_meters(3), "3m²"),
+        (((u.meters / u.second) / u.second)(2), "2m/s²"),
+        ((u.meters / u.second**2)(4), "4m/s²"),
     ],
 )
-def test_to_string(value: Quantity, expected_result: str):
+def test_to_string(value: u.Quantity, expected_result: str):
     assert str(value) == expected_result
+
+
+@pytest.mark.parametrize(
+    "text, quantity, expected_result",
+    [
+        ("7m", u.Distance, u.m(7)),
+        ("6 km", u.Distance, u.km(6)),
+        ("3.5km", u.Distance, u.km(3.5)),
+        ("5m/s", u.Speed, u.mps(5)),
+        ("3m²", u.Area, u.m2(3)),
+        ("8s⁻¹", u.Frequency, u.Hz(8)),
+        ("2m/s²", u.Acceleration, u.mps2(2)),
+        ("4m/s/s", u.Acceleration, u.mps2(4)),
+    ],
+)
+def test_parse(text: str, quantity: t.Type[u.Quantity], expected_result: u.Quantity):
+    assert quantity.parse(text) == expected_result

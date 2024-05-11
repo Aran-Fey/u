@@ -1,11 +1,16 @@
-from ..quantity_and_unit import Quantity, Unit
+from ..quantity import Quantity
+from ..quantity_caps import QUANTITY
+from ..unit import Unit
 
 
-__all__ = ["LuminousIntensity", "candelas", "candela", "cd"]
+__all__ = ["LUMINOUS_INTENSITY", "LuminousIntensity", "candelas", "candela", "cd"]
 
 
-class LuminousIntensity(Quantity):
+class LUMINOUS_INTENSITY(QUANTITY):
     pass
 
 
-candelas = candela = cd = Unit[LuminousIntensity]("cd", 1)
+LuminousIntensity = Quantity[LUMINOUS_INTENSITY]
+
+
+candelas = candela = cd = Unit(LuminousIntensity, "cd", 1)

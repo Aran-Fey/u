@@ -1,8 +1,22 @@
+import collections
 import functools
-from typing import Callable, TypeVar
+import re
+import sys
+import types
+import typing as t
 
 
-C = TypeVar("C", bound=Callable)
+C = t.TypeVar("C", bound=t.Callable)
+
+
+if sys.version_info >= (3, 10):
+    UNION_TYPES = (t.Union, types.UnionType)
+else:
+    UNION_TYPES = (t.Union,)
+
+
+def is_union(obj: object) -> bool:
+    return t.get_origin(obj) in UNION_TYPES
 
 
 def cached(func: C) -> C:
@@ -19,3 +33,74 @@ def cached(func: C) -> C:
         return result
 
     return wrapper  # type: ignore
+
+
+SYMBOL_REGEX = re.compile(r"(^|[*/])([^*/]+?)([⁻⁺⁰¹²³⁴⁵⁶⁷⁸⁹]*)\s*(?=[*/]|$)")
+
+
+def parse_symbol(symbol: str) -> t.Counter[str]:
+    """
+    Parses a symbol into a Counter of exponents.
+
+    ```
+    >>> parse_symbol('1/s²')
+    Counter({'1': 1, 's': -2})
+    ```
+    """
+    result = collections.Counter()
+
+    for op, sym, power in SYMBOL_REGEX.findall(symbol):
+        multiplier = -1 if op == "/" else 1
+        result[sym.strip()] += multiplier * _parse_exponent(power)
+
+    return result
+
+
+POW_TO_NUM = str.maketrans("⁻⁺⁰¹²³⁴⁵⁶⁷⁸⁹", "-+0123456789")
+NUM_TO_POW = {value: key for key, value in POW_TO_NUM.items()}
+
+
+def _parse_exponent(exp: str) -> int:
+    if not exp:
+        return 1
+
+    return int(exp.translate(POW_TO_NUM))
+
+
+def _str_exponent(exp: int) -> str:
+    if exp == 1:
+        return ""
+
+    return str(exp).translate(NUM_TO_POW)
+
+
+def join_symbols(symbol1: str, symbol2: str, operator: str) -> str:
+    powers1 = parse_symbol(symbol1)
+
+    powers2 = parse_symbol(symbol2)
+    if operator == "/":
+        powers2 = {symbol: -exponent for symbol, exponent in powers2.items()}
+
+    powers1.update(powers2)
+    powers1.pop("1", None)
+
+    # Find the first symbol with a positive exponent
+    segments = []
+
+    for symbol, exponent in powers1.items():
+        if exponent > 0:
+            del powers1[symbol]
+            segments.append(f"{symbol}{_str_exponent(exponent)}")
+            break
+    else:
+        segments.append("1")
+
+    # Add the remaining symbols
+    for symbol, exponent in powers1.items():
+        segments += [
+            "*" if exponent > 0 else "/",
+            symbol,
+            _str_exponent(abs(exponent)),
+        ]
+
+    return "".join(segments)

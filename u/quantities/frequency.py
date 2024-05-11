@@ -1,12 +1,31 @@
-from ..quantity_and_unit import Div
-from .duration import Duration, seconds
-from .one import One, one
+from .duration import DURATION, seconds
+from .one import ONE, one
+from ..prefixes import kilo, mega, giga
+from ..quantity import Quantity
+from ..quantity_caps import DIV
 
 
-__all__ = ["Frequency", "hertz", "hertzes", "Hz"]
+# fmt: off
+__all__ = [
+    "FREQUENCY",
+    "Frequency",
+    "hertzes", "hertz", "Hz",
+    "kilohertzes", "kilohertz", "KHz",
+    "megahertzes", "megahertz", "MHz",
+    "gigahertzes", "gigahertz", "GHz",
+]
+# fmt: on
 
 
-Frequency = Div[One, Duration]
+FREQUENCY = DIV[ONE, DURATION]
 
-hertz = hertzes = Hz = one / seconds
+
+Frequency = Quantity[FREQUENCY]
+
+
+hertzes = hertz = Hz = one / seconds
 hertz.symbol = "Hz"
+
+kilohertzes = kilohertz = KHz = kilo(hertz)
+megahertzes = megahertz = MHz = mega(hertz)
+gigahertzes = gigahertz = GHz = giga(hertz)

@@ -1,10 +1,15 @@
-from ..quantity_and_unit import Div
-from .duration import Duration, second, hour
-from .speed import Speed, meters_per_second, kilometers_per_hour
+import typing as t
+
+from ..quantity import Quantity
+from ..quantity_caps import DIV, SQUARE
+from .distance import DISTANCE, meters, kilometers
+from .duration import DURATION, second, hour
+from .speed import SPEED
 
 
 # fmt: off
 __all__ = [
+    "ACCELERATION",
     "Acceleration",
     "meters_per_second_squared", "mps2",
     "kilometers_per_hour_squared", "kph2",
@@ -12,7 +17,14 @@ __all__ = [
 # fmt: on
 
 
-Acceleration = Div[Speed, Duration]
+ACCELERATION = t.Union[
+    DIV[SPEED, DURATION],
+    DIV[DISTANCE, SQUARE[DURATION]],
+]
 
-meters_per_second_squared = mps2 = meters_per_second / second
-kilometers_per_hour_squared = kph2 = kilometers_per_hour / hour
+Acceleration = Quantity[ACCELERATION]
+
+meters_per_second_squared = mps2 = meters / (second**2)
+kilometers_per_hour_squared = kph2 = kilometers / (hour**2)
+
+accel: Acceleration = mps2(3)

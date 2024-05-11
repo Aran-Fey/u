@@ -42,6 +42,7 @@ def test_multiplication(result: u.Quantity, expected_result: u.Quantity):
     "result, expected_result",
     [
         (u.meters(10) / u.seconds(5), u.meters_per_second(2)),
+        (u.km(10) / u.seconds(5), u.meters_per_second(2000)),
     ],
 )
 def test_division(result: u.Quantity, expected_result: u.Quantity):

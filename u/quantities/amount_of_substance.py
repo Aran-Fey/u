@@ -1,16 +1,22 @@
-from ..quantity_and_unit import Quantity, Unit
+from ..quantity import Quantity
+from ..quantity_caps import QUANTITY
+from ..unit import Unit
 
 
 # fmt: off
 __all__ = [
+    "AMOUNT_OF_SUBSTANCE",
     "AmountOfSubstance",
     "moles", "mole", "mol",
 ]
 # fmt: on
 
 
-class AmountOfSubstance(Quantity):
+class AMOUNT_OF_SUBSTANCE(QUANTITY):
     pass
 
 
-moles = mole = mol = Unit[AmountOfSubstance]("mol", 1)
+AmountOfSubstance = Quantity[AMOUNT_OF_SUBSTANCE]
+
+
+moles = mole = mol = Unit(AmountOfSubstance, "mol", 1)

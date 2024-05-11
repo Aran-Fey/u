@@ -1,5 +1,6 @@
 from ._utils import cached
-from .quantity_and_unit import Unit, Q
+from .quantity_caps import Q
+from .unit import Unit
 
 __all__ = [
     "Prefix",
@@ -40,6 +41,7 @@ class Prefix:
     @cached
     def __call__(self, unit: Unit[Q]) -> Unit[Q]:
         return Unit(
+            unit.quantity,
             self.symbol + unit.symbol,
             self.multiplier * unit.multiplier,
         )

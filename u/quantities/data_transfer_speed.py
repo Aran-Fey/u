@@ -1,10 +1,12 @@
-from ..quantity_and_unit import Div
-from .data_volume import DataVolume, bytes, kilobytes, megabytes, gigabytes, terabytes
-from .duration import Duration, second
+from .data_volume import DATA_VOLUME, bytes, kilobytes, megabytes, gigabytes, terabytes
+from .duration import DURATION, second
+from ..quantity import Quantity
+from ..quantity_caps import DIV
 
 
 # fmt: off
 __all__ = [
+    "DATA_TRANSFER_SPEED",
     "DataTransferSpeed",
     "bytes_per_second", "Bps",
     "kilobytes_per_second", "Bps",
@@ -15,7 +17,9 @@ __all__ = [
 # fmt: on
 
 
-DataTransferSpeed = Div[DataVolume, Duration]
+DATA_TRANSFER_SPEED = DIV[DATA_VOLUME, DURATION]
+
+DataTransferSpeed = Quantity[DATA_TRANSFER_SPEED]
 
 bytes_per_second = Bps = bytes / second
 kilobytes_per_second = KBps = kilobytes / second

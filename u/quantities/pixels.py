@@ -1,11 +1,16 @@
-from ..quantity_and_unit import Quantity, Unit
+from ..quantity import Quantity
+from ..quantity_caps import QUANTITY
+from ..unit import Unit
 
 
-__all__ = ["Pixels", "pixels", "pixel", "px"]
+__all__ = ["PIXELS", "Pixels", "pixels", "pixel", "px"]
 
 
-class Pixels(Quantity):
+class PIXELS(QUANTITY):
     pass
 
 
-pixels = pixel = px = Unit[Pixels]("px", 1)
+Pixels = Quantity[PIXELS]
+
+
+pixels = pixel = px = Unit(Pixels, "px", 1)

@@ -1,16 +1,22 @@
-from ..quantity_and_unit import Quantity, Unit
+from ..quantity import Quantity
+from ..quantity_caps import QUANTITY
+from ..unit import Unit
 
 
 # fmt: off
 __all__ = [
+    "ELECTRIC_CURRENT",
     "ElectricCurrent",
     "amperes", "ampere", "A",
 ]
 # fmt: on
 
 
-class ElectricCurrent(Quantity):
+class ELECTRIC_CURRENT(QUANTITY):
     pass
 
 
-amperes = ampere = A = Unit[ElectricCurrent]("A", 1)
+ElectricCurrent = Quantity[ELECTRIC_CURRENT]
+
+
+amperes = ampere = A = Unit(ElectricCurrent, "A", 1)
