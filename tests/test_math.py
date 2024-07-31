@@ -1,3 +1,5 @@
+import typing as t
+
 import pytest
 
 import u
@@ -47,3 +49,36 @@ def test_multiplication(result: u.Quantity, expected_result: u.Quantity):
 )
 def test_division(result: u.Quantity, expected_result: u.Quantity):
     assert result == expected_result
+
+
+def test_getitem():
+    r = u.Quantity[u.DURATION]
+    print(r.exponents)
+
+
+@pytest.mark.parametrize(
+    "unit, expected_exponents",
+    [
+        (u.meters / u.hour, {u.DISTANCE: 1, u.DURATION: -1}),
+        (u.km**2, {u.DISTANCE: 2}),
+        (u.minutes * u.amperes, {u.DURATION: 1, u.ELECTRIC_CURRENT: 1}),
+        (u.kg / u.second * u.m / u.second, {u.MASS: 1, u.DISTANCE: 1, u.DURATION: -2}),
+    ],
+)
+def test_quantity_exponents_after_unit_math(
+    unit: u.Unit, expected_exponents: dict[t.Type[u.QUANTITY], int]
+):
+    assert dict(unit.quantity.exponents) == expected_exponents
+
+
+@pytest.mark.parametrize(
+    "unit, expected_quantity",
+    [
+        (u.meters / u.hour, u.Speed),
+        (u.km**2, u.Area),
+        (u.minutes * u.amperes, u.ElectricCharge),
+        (u.kg / u.second * u.m / u.second, u.Force),
+    ],
+)
+def test_quantity_equality_after_unit_math(unit: u.Unit, expected_quantity: t.Type[u.Quantity]):
+    assert unit.quantity == expected_quantity

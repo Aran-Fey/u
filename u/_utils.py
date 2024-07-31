@@ -51,7 +51,7 @@ def parse_symbol(symbol: str) -> t.Counter[str]:
 
     for op, sym, power in SYMBOL_REGEX.findall(symbol):
         multiplier = -1 if op == "/" else 1
-        result[sym.strip()] += multiplier * _parse_exponent(power)
+        result[sym.strip()] += multiplier * parse_exponent(power)
 
     return result
 
@@ -60,14 +60,14 @@ POW_TO_NUM = str.maketrans("⁻⁺⁰¹²³⁴⁵⁶⁷⁸⁹", "-+0123456789")
 NUM_TO_POW = {value: key for key, value in POW_TO_NUM.items()}
 
 
-def _parse_exponent(exp: str) -> int:
+def parse_exponent(exp: str) -> int:
     if not exp:
         return 1
 
     return int(exp.translate(POW_TO_NUM))
 
 
-def _str_exponent(exp: int) -> str:
+def str_exponent(exp: int) -> str:
     if exp == 1:
         return ""
 
@@ -90,7 +90,7 @@ def join_symbols(symbol1: str, symbol2: str, operator: str) -> str:
     for symbol, exponent in powers1.items():
         if exponent > 0:
             del powers1[symbol]
-            segments.append(f"{symbol}{_str_exponent(exponent)}")
+            segments.append(f"{symbol}{str_exponent(exponent)}")
             break
     else:
         segments.append("1")
@@ -100,7 +100,7 @@ def join_symbols(symbol1: str, symbol2: str, operator: str) -> str:
         segments += [
             "*" if exponent > 0 else "/",
             symbol,
-            _str_exponent(abs(exponent)),
+            str_exponent(abs(exponent)),
         ]
 
     return "".join(segments)

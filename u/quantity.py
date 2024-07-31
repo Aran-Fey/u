@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import collections
-import functools
 import math
 import re
-import sys
 import types
 import typing as t
 
 import u
 
-from ._utils import is_union
+from ._utils import UNION_TYPES, str_exponent
 from .quantity_caps import QUANTITY, DIV, MUL, _MUL
 
 
@@ -24,23 +22,42 @@ Q2 = t.TypeVar("Q2", bound=QUANTITY)
 NUMBER_WITH_UNIT_REGEX = re.compile(r"([+-]?[0-9._]+)(.*)")
 
 
-if sys.version_info >= (3, 9, 2):
-    GenericAlias = types.GenericAlias
-else:
-    GenericAlias = t._GenericAlias
+class QuantityAlias(types.GenericAlias):
+    # GenericAlias is stupid and redirects all attribute access to the __origin__ class. Since we
+    # want to implement an `exponents` property, we have to fix that idiotic behavior.
+    def __getattribute__(self, name: str):
+        if name in vars(__class__):
+            return vars(__class__)[name].__get__(self)
 
+        return super().__getattribute__(name)
 
-class QuantityAlias(GenericAlias):
-    @functools.cached_property
+    @property
     def exponents(self) -> t.Mapping[t.Type[QUANTITY], int]:
-        [quantity] = t.get_args(self)
-
-        while is_union(quantity):
-            quantity = t.get_args(quantity)[0]
-
         exponents = collections.Counter()
+
+        quantity = t.get_args(self)[0]
         _add_exponents(quantity, exponents)
+
         return exponents
+
+    def __eq__(self, other: object):
+        if not isinstance(other, __class__):
+            return NotImplemented
+
+        return self.exponents == other.exponents
+
+    def __repr__(self) -> str:
+        exponents = self.exponents
+
+        if not exponents:
+            return "Quantity[ONE]"
+
+        exponents = " ".join(
+            f"{quantity.__name__}{str_exponent(exponents[quantity])}"
+            for quantity in sorted(exponents, key=lambda q: q.__name__)
+        )
+
+        return f"Quantity[{exponents}]"
 
 
 def _add_exponents(quantity, exponents: collections.Counter[t.Type[QUANTITY]]) -> None:
@@ -56,7 +73,7 @@ def _add_exponents(quantity, exponents: collections.Counter[t.Type[QUANTITY]]) -
     origin = t.get_origin(quantity)
     args = t.get_args(quantity)
 
-    if origin is t.Union:
+    if origin in UNION_TYPES:
         # If it's a Union, then the subtypes must all be equivalent. So we simply pick one and
         # recurse.
         quantity = args[0]
@@ -77,51 +94,10 @@ class QuantityMeta(type(t.Generic)):
     def exponents(cls) -> t.Mapping[t.Type[QUANTITY], int]:
         # This implementation is only relevant for un-parameterized `Quantity`. Parameterized
         # quantities are implemented in `QuantityAlias`.
-        return {}
+        raise TypeError(f"Unparameterized {cls} has no exponents")
 
 
 class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
-    """
-    Represents a measurable quantity, like mass or distance.
-
-    # FIXME: Fix docstring
-
-    To create a new Quantity, simply make a subclass:
-
-    ```
-    class Tastiness(u.Quantity):
-        pass
-    ```
-
-    To derive a new Quantity from existing ones, use `u.Mul`, `u.Div` and `u.Square`:
-
-    ```
-    Area = u.Square[u.Distance]
-    ElectricCharge = u.Mul[u.Duration, u.ElectricCurrent]
-    Speed = u.Div[u.Distance, u.Duration]
-    ```
-
-    Unfortunately type checkers don't understand math, which can sometimes lead to unexpected
-    problems:
-
-    ```
-    BadAcceleration = u.Div[u.Distance, u.Square[u.Duration]]
-
-    # Type checking error! The type checker thinks that m/s/s
-    # is not compatible with Distance/Duration²
-    accel: BadAcceleration = (u.m / u.s / u.s)(3)
-    ```
-
-    In cases like this, you must define your Quantity as a `u.AnyOf`:
-
-    ```
-    GoodAcceleration = u.AnyOf[
-        u.Div[u.Distance, u.Square[u.Duration]],
-        u.Div[u.Div[u.Distance, u.Duration], u.Duration],
-    ]
-    ```
-    """
-
     if not t.TYPE_CHECKING:
 
         def __class_getitem__(cls, subtype):
@@ -259,3 +235,21 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
 
     def __repr__(self) -> str:
         return f"{self._value}{self.unit.symbol}"
+
+    def __str__(self) -> str:
+        # FIXME: Use the prefixes defined in the QUANTITY
+        # FIXME: Convert to other units, not just prefixes
+        prefixes = u.SI_PREFIXES
+
+        value = self._value * self.unit.multiplier
+
+        # Find the most suitable prefix
+        candidates = [prefix for prefix in prefixes if prefix.multiplier < value]
+        if candidates:
+            prefix = max(candidates, key=lambda prefix: prefix.multiplier)
+        else:
+            prefix = min(prefixes, key=lambda prefix: prefix.multiplier)
+
+        value /= prefix.multiplier
+
+        return f"{value} {prefix.symbol}{self.unit.symbol}"

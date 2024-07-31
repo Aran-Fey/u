@@ -8,6 +8,7 @@ from .duration import *
 from .electric_charge import *
 from .electric_current import *
 from .data_volume import *
+from .force import *
 from .frequency import *
 from .luminous_intensity import *
 from .mass import *

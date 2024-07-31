@@ -1,0 +1,25 @@
+site_name: "u Documentation"
+
+theme:
+  name: "material"
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: octicons/sun-16
+        name: Switch to light mode
+    - scheme: default
+      toggle:
+        icon: octicons/moon-16
+        name: Switch to dark mode
+
+plugins:
+- search
+- mkdocstrings:
+    default_handler: python
+    handlers:
+      python:
+        options:
+          show_source: false
+          show_root_heading: true
+          heading_level: 1

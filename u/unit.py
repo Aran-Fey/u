@@ -28,14 +28,26 @@ class Unit(t.Generic[Q_co]):
     ```
     seconds = Unit(Duration, "s", 1)
     minutes = Unit(Duration, "min", 60)
+    coulombs = Unit(ElectricCharge, "C", seconds.multiplier * amperes.multiplier)
     ```
     """
 
     def __init__(self, quantity: t.Type[Quantity[Q_co]], symbol: str, multiplier: float):
         self.quantity = quantity
-        self.symbol = symbol
+        self._symbol = symbol
         self.multiplier = multiplier
 
+        units_by_symbol[symbol] = self
+
+    @property
+    def symbol(self) -> str:
+        return self._symbol
+
+    @symbol.setter
+    def symbol(self, symbol: str) -> None:
+        del units_by_symbol[self._symbol]
+
+        self._symbol = symbol
         units_by_symbol[symbol] = self
 
     @staticmethod
@@ -122,14 +134,20 @@ class Unit(t.Generic[Q_co]):
             self.multiplier / other.multiplier,
         )
 
-    def __call__(self, value: float) -> Quantity[Q_co]:
-        return Quantity(value, self)
-
     def __rmul__(self, value: float) -> Quantity[Q_co]:
         return Quantity(value, self)
 
+    def __call__(self, value: float) -> Quantity[Q_co]:
+        return Quantity(value, self)
 
-def join_quantities(q1: t.Type[Quantity], q2: t.Type[Quantity], joiner) -> t.Type[Quantity]:
+    def __repr__(self) -> str:
+        return f"Unit({self.quantity!r}, {self.symbol!r}, {self.multiplier!r})"
+
+    def __str__(self) -> str:
+        return self.symbol
+
+
+def join_quantities(q1, q2, joiner) -> t.Type[Quantity]:
     [a] = t.get_args(q1)
     [b] = t.get_args(q2)
 

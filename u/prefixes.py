@@ -1,9 +1,15 @@
+from __future__ import annotations
+
+import typing as t
+
+import u
+
 from ._utils import cached
-from .quantity_caps import Q
-from .unit import Unit
 
 __all__ = [
     "Prefix",
+    "SI_PREFIXES",
+    "BINARY_PREFIXES",
     "atto",
     "femto",
     "pico",
@@ -33,14 +39,17 @@ __all__ = [
 ]
 
 
+Q = t.TypeVar("Q", bound="u.QUANTITY")
+
+
 class Prefix:
     def __init__(self, symbol: str, multiplier: float):
         self.symbol = symbol
         self.multiplier = multiplier
 
     @cached
-    def __call__(self, unit: Unit[Q]) -> Unit[Q]:
-        return Unit(
+    def __call__(self, unit: u.Unit[Q]) -> u.Unit[Q]:
+        return u.Unit(
             unit.quantity,
             self.symbol + unit.symbol,
             self.multiplier * unit.multiplier,
@@ -75,6 +84,33 @@ yotta = Prefix("Y", 1e24)
 ronna = Prefix("R", 1e27)
 quetta = Prefix("Q", 1e30)
 
+SI_PREFIXES = (
+    quecto,
+    ronto,
+    yocto,
+    zepto,
+    atto,
+    femto,
+    pico,
+    nano,
+    micro,
+    milli,
+    centi,
+    deci,
+    deka,
+    hecto,
+    kilo,
+    mega,
+    giga,
+    tera,
+    peta,
+    exa,
+    zetta,
+    yotta,
+    ronna,
+    quetta,
+)
+
 kibi = Prefix("ki", 2**10)
 mebi = Prefix("Mi", 2**20)
 gibi = Prefix("Gi", 2**30)
@@ -83,3 +119,5 @@ pebi = Prefix("Pi", 2**50)
 exbi = Prefix("Ei", 2**60)
 zebi = Prefix("Zi", 2**70)
 yobi = Prefix("Yi", 2**80)
+
+BINARY_PREFIXES = (kibi, mebi, gibi, tebi, pebi, exbi, zebi, yobi)

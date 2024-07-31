@@ -21,7 +21,7 @@ __all__ = [
 
 
 class DURATION(QUANTITY):
-    pass
+    PREFIXES = ()
 
 
 Duration = Quantity[DURATION]

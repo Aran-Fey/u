@@ -52,6 +52,7 @@ def test_to_string(value: u.Quantity, expected_result: str):
         ("8s⁻¹", u.Frequency, u.Hz(8)),
         ("2m/s²", u.Acceleration, u.mps2(2)),
         ("4m/s/s", u.Acceleration, u.mps2(4)),
+        ("3C", u.ElectricCharge, u.coulombs(3)),
     ],
 )
 def test_parse(text: str, quantity: t.Type[u.Quantity], expected_result: u.Quantity):
