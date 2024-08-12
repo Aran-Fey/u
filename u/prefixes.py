@@ -42,14 +42,26 @@ __all__ = [
 Q = t.TypeVar("Q", bound="u.QUANTITY")
 
 
+prefix_by_symbol = dict[str, "Prefix"]()
+
+
 class Prefix:
     def __init__(self, symbol: str, multiplier: float):
         self.symbol = symbol
         self.multiplier = multiplier
 
+        prefix_by_symbol[symbol] = self
+
+    @classmethod
+    def from_symbol(cls, symbol: str) -> Prefix:
+        try:
+            return prefix_by_symbol[symbol]
+        except KeyError:
+            raise ValueError(f"The symbol {symbol!r} doesn't correspond to any Prefix")
+
     @cached
     def __call__(self, unit: u.Unit[Q]) -> u.Unit[Q]:
-        return u.Unit(
+        return u.unit.UnregisteredUnit(
             unit.quantity,
             self.symbol + unit.symbol,
             self.multiplier * unit.multiplier,
@@ -57,6 +69,9 @@ class Prefix:
 
     def __repr__(self) -> str:
         return f"<Prefix {self.symbol}>"
+
+
+DUMMY_PREFIX = Prefix("", 1)
 
 
 quecto = Prefix("q", 1e-30)

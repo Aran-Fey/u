@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 import typing as t
 import weakref
 
@@ -32,30 +33,72 @@ class Unit(t.Generic[Q_co]):
     ```
     """
 
-    def __init__(self, quantity: t.Type[Quantity[Q_co]], symbol: str, multiplier: float):
-        self.quantity = quantity
-        self._symbol = symbol
-        self.multiplier = multiplier
+    @t.overload
+    def __init__(
+        self,
+        quantity: t.Type[Quantity[Q_co]],
+        symbol: str,
+        multiplier: float,
+    ):
+        pass
 
-        units_by_symbol[symbol] = self
+    @t.overload
+    def __init__(
+        self,
+        unit: Unit[Q_co],
+        /,
+        symbol: str,
+    ):
+        pass
 
-    @property
-    def symbol(self) -> str:
-        return self._symbol
+    def __init__(  # type: ignore (redeclaration)
+        self,
+        quantity: t.Type[Quantity[Q_co]] | Unit[Q_co],
+        symbol: str,
+        multiplier: float | None = None,
+    ):
+        self.symbol = symbol
 
-    @symbol.setter
-    def symbol(self, symbol: str) -> None:
-        del units_by_symbol[self._symbol]
+        if isinstance(quantity, Unit):
+            self.quantity = quantity.quantity
+            self.multiplier = quantity.multiplier
+        else:
+            self.quantity = quantity
 
-        self._symbol = symbol
-        units_by_symbol[symbol] = self
+            assert isinstance(multiplier, (int, float))
+            self.multiplier = multiplier
+
+        if not isinstance(self, UnregisteredUnit):
+            units_by_symbol[symbol] = self
+
+            # Register this unit with the Quantity
+            units = t.cast(list[Unit[Q_co]], self.quantity.units)
+            bisect.insort(units, self, key=lambda unit: unit.multiplier)
 
     @staticmethod
     def _from_symbol(symbol: str) -> Unit:
         try:
             return units_by_symbol[symbol]
         except KeyError:
-            raise ValueError(f"The symbol {symbol!r} does not correspond to a known Unit")
+            pass
+
+        # Check if it starts with a prefix
+        if len(symbol) > 1:
+            prefix_symbol = symbol[0]
+            try:
+                prefix = u.Prefix.from_symbol(prefix_symbol)
+            except ValueError:
+                pass
+            else:
+                symbol = symbol[1:]
+                try:
+                    unit = units_by_symbol[symbol]
+                except KeyError:
+                    pass
+                else:
+                    return prefix(unit)
+
+        raise ValueError(f"The symbol {symbol!r} doesn't correspond to a known Unit")
 
     @classmethod
     def parse(cls, symbol: str, /, quantity: t.Type[Quantity[Q2]] = Quantity) -> Unit[Q2]:
@@ -77,8 +120,8 @@ class Unit(t.Generic[Q_co]):
             elif exponent < 0:
                 unit /= Unit._from_symbol(sym) ** -exponent
 
-        if unit.is_compatible_with(quantity):
-            return unit
+        if quantity is Quantity or unit.is_compatible_with(quantity):
+            return unit  # type: ignore (???)
 
         raise ValueError(f"{symbol!r} is not a unit of {cls}")
 
@@ -99,6 +142,12 @@ class Unit(t.Generic[Q_co]):
             return self.quantity.exponents == other.exponents
 
     @t.overload
+    def __pow__(self, exponent: t.Literal[-1]) -> Unit[DIV[u.ONE, Q_co]]: ...
+
+    @t.overload
+    def __pow__(self, exponent: t.Literal[0]) -> Unit[u.ONE]: ...
+
+    @t.overload
     def __pow__(self, exponent: t.Literal[1]) -> t.Self: ...
 
     @t.overload
@@ -111,16 +160,24 @@ class Unit(t.Generic[Q_co]):
     def __pow__(self, exponent: int) -> Unit: ...
 
     def __pow__(self, exponent: int) -> Unit:
-        result = self
+        if exponent > 0:
+            # Avoid use of `u.one` here because this code runs before the module is completely
+            # initialized
+            result = self
 
-        for _ in range(exponent - 1):
-            result *= self
+            for _ in range(exponent - 1):
+                result *= self
+        else:
+            result = u.one
+
+            for _ in range(-exponent):
+                result /= self
 
         return result
 
     @cached
     def __mul__(self, other: Unit[Q2]) -> Unit[MUL[Q_co, Q2]]:
-        return Unit(
+        return UnregisteredUnit(
             join_quantities(self.quantity, other.quantity, MUL),
             join_symbols(self.symbol, other.symbol, "*"),
             self.multiplier * other.multiplier,
@@ -128,7 +185,7 @@ class Unit(t.Generic[Q_co]):
 
     @cached
     def __truediv__(self, other: Unit[Q2]) -> Unit[DIV[Q_co, Q2]]:
-        return Unit(
+        return UnregisteredUnit(
             join_quantities(self.quantity, other.quantity, DIV),
             join_symbols(self.symbol, other.symbol, "/"),
             self.multiplier / other.multiplier,
@@ -137,14 +194,27 @@ class Unit(t.Generic[Q_co]):
     def __rmul__(self, value: float) -> Quantity[Q_co]:
         return Quantity(value, self)
 
-    def __call__(self, value: float) -> Quantity[Q_co]:
-        return Quantity(value, self)
+    def __rtruediv__(self, value: t.Literal[1]) -> Unit[DIV[u.ONE, Q_co]]:
+        assert value == 1
+        return u.one / self
+
+    def __call__(self, value: float | Quantity[Q_co]) -> Quantity[Q_co]:
+        if isinstance(value, Quantity):
+            return Quantity(value.to_number(self), self)
+        else:
+            return Quantity(value, self)
 
     def __repr__(self) -> str:
         return f"Unit({self.quantity!r}, {self.symbol!r}, {self.multiplier!r})"
 
     def __str__(self) -> str:
         return self.symbol
+
+
+class UnregisteredUnit(Unit):
+    """
+    Instances of this class won't have their `symbol` registered in the global lookup table.
+    """
 
 
 def join_quantities(q1, q2, joiner) -> t.Type[Quantity]:

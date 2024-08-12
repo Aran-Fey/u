@@ -1,7 +1,21 @@
 import subprocess
 import sys
+import typing as t
+from pathlib import Path
 
 import pytest
+
+import u
+
+
+def test_typevar():
+    Q = t.TypeVar("Q", bound=u.QUANTITY)
+
+    ZeroOrQuantity = t.Literal[0] | u.Quantity[Q]  # type: ignore
+    ZeroOrDuration = ZeroOrQuantity[u.DURATION]  # type: ignore
+
+    Speed = u.Quantity[u.DIV[Q, u.DURATION]]  # type: ignore
+    DownloadSpeed = Speed[u.DATA_VOLUME]  # type: ignore
 
 
 def validate_typing(code: str) -> None:
@@ -55,3 +69,17 @@ def test_typing_is_correct(expr: str):
 def test_typing_error(expr: str):
     with pytest.raises(Exception):
         validate_typing(expr)
+
+
+def test_static_tests_file():
+    file_path = Path(__file__).parent / "static_tests.py"
+    process = subprocess.run(
+        [sys.executable, "-m", "mypy", str(file_path)],
+        capture_output=True,
+        text=True,
+    )
+
+    if process.returncode == 0:
+        return
+
+    raise Exception(process.stderr)

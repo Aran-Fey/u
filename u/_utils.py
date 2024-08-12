@@ -1,9 +1,13 @@
-import collections
+from __future__ import annotations
+
+import collections.abc
 import functools
 import re
 import sys
 import types
 import typing as t
+
+import u
 
 
 C = t.TypeVar("C", bound=t.Callable)
@@ -104,3 +108,31 @@ def join_symbols(symbol1: str, symbol2: str, operator: str) -> str:
         ]
 
     return "".join(segments)
+
+
+class ExponentDict(collections.abc.Mapping[type["u.QUANTITY"], int]):
+    def __init__(self, exponents: t.Mapping[type[u.QUANTITY], int]):
+        # Make sure it's *not* a defaultdict, because accessing a non-existent key would change the
+        # size of the dict, which we don't want
+        self._exponents = dict(exponents)
+
+    def __getitem__(self, quantity: type[u.QUANTITY]) -> int:
+        return self._exponents.get(quantity, 0)
+
+    def __iter__(self) -> t.Iterator[type[u.QUANTITY]]:
+        return iter(self._exponents)
+
+    def __len__(self) -> int:
+        return len(self._exponents)
+
+    def __hash__(self) -> int:
+        return hash(tuple(self.items()))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, __class__):
+            return NotImplemented
+
+        return self._exponents == other._exponents
+
+    def __repr__(self) -> str:
+        return repr(self._exponents)

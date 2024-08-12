@@ -3,6 +3,7 @@ from .one import ONE, one
 from ..prefixes import kilo, mega, giga
 from ..quantity import Quantity
 from ..quantity_caps import DIV
+from ..unit import Unit
 
 
 # fmt: off
@@ -23,8 +24,7 @@ FREQUENCY = DIV[ONE, DURATION]
 Frequency = Quantity[FREQUENCY]
 
 
-hertzes = hertz = Hz = one / seconds
-hertz.symbol = "Hz"
+hertzes = hertz = Hz = Unit(one / seconds, "Hz")
 
 kilohertzes = kilohertz = KHz = kilo(hertz)
 megahertzes = megahertz = MHz = mega(hertz)

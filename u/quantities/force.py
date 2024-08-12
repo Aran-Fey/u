@@ -5,6 +5,7 @@ from .duration import DURATION, s
 from .mass import MASS, kg
 from ..quantity import Quantity
 from ..quantity_caps import DIV, MUL, SQUARE
+from ..unit import Unit
 
 
 # fmt: off
@@ -29,5 +30,4 @@ FORCE = t.Union[
 Force = Quantity[FORCE]
 
 
-newtons = newton = N = kg * m / s / s
-newtons.symbol = "N"
+newtons = newton = N = Unit(kg * m / s / s, "N")

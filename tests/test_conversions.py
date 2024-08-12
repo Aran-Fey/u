@@ -35,9 +35,30 @@ def test_to_number(value: u.Quantity, unit: u.Unit, expected_result: float):
         (u.square_meters(3), "3m²"),
         (((u.meters / u.second) / u.second)(2), "2m/s²"),
         ((u.meters / u.second**2)(4), "4m/s²"),
+        ((1 / u.meters)(5), "5m⁻¹"),
     ],
 )
-def test_to_string(value: u.Quantity, expected_result: str):
+def test_repr(value: u.Quantity, expected_result: str):
+    assert repr(value) == expected_result
+
+
+@pytest.mark.parametrize(
+    "value, expected_result",
+    [
+        (u.kilometers(0), "0 m"),
+        (u.meters(7), "7 m"),
+        (u.kilometers(3.5), "3.5 km"),
+        (u.meters(1289), "1.3 km"),
+        (u.seconds(3600), "1 h"),
+        (u.hertz(7), "7 Hz"),
+        ((1 / u.m)(5), "5 m⁻¹"),
+        # (u.hours(1000), "1000 h"),
+        (u.square_meters(3), "3 m²"),
+        (u.mps(3000), "3 km/s"),
+        (u.kph(3), "3 km/h"),
+    ],
+)
+def test_str(value: u.Quantity, expected_result: str):
     assert str(value) == expected_result
 
 
@@ -57,3 +78,18 @@ def test_to_string(value: u.Quantity, expected_result: str):
 )
 def test_parse(text: str, quantity: t.Type[u.Quantity], expected_result: u.Quantity):
     assert quantity.parse(text) == expected_result
+
+
+@pytest.mark.parametrize(
+    "text, quantity",
+    [
+        ("7m", u.Speed),
+        ("6 km", u.Area),
+        ("5m/s", u.Frequency),
+        ("3m²", u.Acceleration),
+        ("8s⁻¹", u.ElectricCharge),
+    ],
+)
+def test_parse_as_wrong_quantity(text: str, quantity: t.Type[u.Quantity]):
+    with pytest.raises(ValueError):
+        quantity.parse(text)

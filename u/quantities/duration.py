@@ -1,3 +1,4 @@
+from ..prefixes import SI_PREFIXES, milli
 from ..quantity import Quantity
 from ..quantity_caps import QUANTITY
 from ..unit import Unit
@@ -21,7 +22,7 @@ __all__ = [
 
 
 class DURATION(QUANTITY):
-    PREFIXES = ()
+    PREFIXES = SI_PREFIXES[: SI_PREFIXES.index(milli) + 1]
 
 
 Duration = Quantity[DURATION]

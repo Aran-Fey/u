@@ -9,7 +9,7 @@ __all__ = [
     "DATA_TRANSFER_SPEED",
     "DataTransferSpeed",
     "bytes_per_second", "Bps",
-    "kilobytes_per_second", "Bps",
+    "kilobytes_per_second", "KBps",
     "megabytes_per_second", "MBps",
     "gigabytes_per_second", "GBps",
     "terabytes_per_second", "TBps",
