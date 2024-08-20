@@ -142,22 +142,22 @@ class Unit(t.Generic[Q_co]):
             return self.quantity.exponents == other.exponents
 
     @t.overload
-    def __pow__(self, exponent: t.Literal[-1]) -> Unit[DIV[u.ONE, Q_co]]: ...
+    def __pow__(self, exponent: t.Literal[-1], /) -> Unit[DIV[u.ONE, Q_co]]: ...
 
     @t.overload
-    def __pow__(self, exponent: t.Literal[0]) -> Unit[u.ONE]: ...
+    def __pow__(self, exponent: t.Literal[0], /) -> Unit[u.ONE]: ...
 
     @t.overload
-    def __pow__(self, exponent: t.Literal[1]) -> t.Self: ...
+    def __pow__(self, exponent: t.Literal[1], /) -> t.Self: ...
 
     @t.overload
-    def __pow__(self, exponent: t.Literal[2]) -> Unit[MUL[Q_co, Q_co]]: ...
+    def __pow__(self, exponent: t.Literal[2], /) -> Unit[MUL[Q_co, Q_co]]: ...
 
     @t.overload
-    def __pow__(self, exponent: t.Literal[3]) -> Unit[MUL[MUL[Q_co, Q_co], Q_co]]: ...
+    def __pow__(self, exponent: t.Literal[3], /) -> Unit[MUL[MUL[Q_co, Q_co], Q_co]]: ...
 
     @t.overload
-    def __pow__(self, exponent: int) -> Unit: ...
+    def __pow__(self, exponent: int, /) -> Unit: ...
 
     def __pow__(self, exponent: int) -> Unit:
         if exponent > 0:
@@ -176,7 +176,7 @@ class Unit(t.Generic[Q_co]):
         return result
 
     @cached
-    def __mul__(self, other: Unit[Q2]) -> Unit[MUL[Q_co, Q2]]:
+    def __mul__(self, other: Unit[Q2], /) -> Unit[MUL[Q_co, Q2]]:
         return UnregisteredUnit(
             join_quantities(self.quantity, other.quantity, MUL),
             join_symbols(self.symbol, other.symbol, "*"),
@@ -184,21 +184,21 @@ class Unit(t.Generic[Q_co]):
         )
 
     @cached
-    def __truediv__(self, other: Unit[Q2]) -> Unit[DIV[Q_co, Q2]]:
+    def __truediv__(self, other: Unit[Q2], /) -> Unit[DIV[Q_co, Q2]]:
         return UnregisteredUnit(
             join_quantities(self.quantity, other.quantity, DIV),
             join_symbols(self.symbol, other.symbol, "/"),
             self.multiplier / other.multiplier,
         )
 
-    def __rmul__(self, value: float) -> Quantity[Q_co]:
+    def __rmul__(self, value: float, /) -> Quantity[Q_co]:
         return Quantity(value, self)
 
-    def __rtruediv__(self, value: t.Literal[1]) -> Unit[DIV[u.ONE, Q_co]]:
+    def __rtruediv__(self, value: t.Literal[1], /) -> Unit[DIV[u.ONE, Q_co]]:
         assert value == 1
         return u.one / self
 
-    def __call__(self, value: float | Quantity[Q_co]) -> Quantity[Q_co]:
+    def __call__(self, value: float | Quantity[Q_co], /) -> Quantity[Q_co]:
         if isinstance(value, Quantity):
             return Quantity(value.to_number(self), self)
         else:
@@ -217,7 +217,7 @@ class UnregisteredUnit(Unit):
     """
 
 
-def join_quantities(q1, q2, joiner) -> t.Type[Quantity]:
+def join_quantities(q1: type[Quantity], q2: type[Quantity], joiner) -> type[Quantity]:
     [a] = t.get_args(q1)
     [b] = t.get_args(q2)
 

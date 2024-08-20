@@ -207,7 +207,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         return self._value * (self.unit.multiplier / unit.multiplier)
 
     @classmethod
-    def parse(cls, text: str) -> Quantity[Q_co]:
+    def parse(cls, text: str, /) -> Quantity[Q_co]:
         match = NUMBER_WITH_UNIT_REGEX.match(text)
         if not match:
             raise ValueError(f"Cannot parse {text!r} as a Quantity")
@@ -223,7 +223,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         return cls(number, unit)
 
     @classmethod
-    def typecheck(cls, other: Quantity) -> t.TypeGuard[Quantity[Q_co]]:
+    def typecheck(cls, other: Quantity, /) -> t.TypeGuard[Quantity[Q_co]]:
         return cls.exponents == type(other).exponents
 
     def is_compatible_with(self, other: Quantity) -> t.TypeGuard[Quantity[Q_co]]:
@@ -308,7 +308,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
 
         return num > expected or math.isclose(num, expected)
 
-    def __add__(self, quantity: NullableQuantity[Q_co]) -> Quantity[Q_co]:
+    def __add__(self, quantity: NullableQuantity[Q_co], /) -> Quantity[Q_co]:
         if quantity == 0:
             return self
 
@@ -319,7 +319,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
 
     __radd__ = __add__
 
-    def __sub__(self, quantity: NullableQuantity[Q_co]) -> Quantity[Q_co]:
+    def __sub__(self, quantity: NullableQuantity[Q_co], /) -> Quantity[Q_co]:
         if quantity == 0:
             return self
 
@@ -328,7 +328,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             self.unit,
         )
 
-    def __rsub__(self, zero: t.Literal[0]) -> Quantity[Q_co]:
+    def __rsub__(self, zero: t.Literal[0], /) -> Quantity[Q_co]:
         assert zero == 0
         return Quantity(-self._value, self.unit)
 
