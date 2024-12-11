@@ -1,6 +1,4 @@
 import re
-import subprocess
-import sys
 import typing as t
 from pathlib import Path
 
@@ -11,17 +9,17 @@ import u
 
 
 def validate_typing(code: str, *, disabled_error_codes: t.Iterable[str] = ()) -> None:
-    cmd = [sys.executable, "-m", "mypy", "-c", f"import typing\nimport u\n{code}"]
+    cmd = ["-c", f"import typing\nimport u\n{code}"]
 
     for error_code in disabled_error_codes:
         cmd += ["--disable-error-code", error_code]
 
-    process = subprocess.run(cmd, capture_output=True, text=True)
+    stdout, stderr, exit_code = mypy.api.run(cmd)
 
-    if process.returncode == 0:
+    if exit_code == 0:
         return
 
-    raise Exception(process.stdout)
+    raise Exception(stdout)
 
 
 def test_typevars_at_runtime():
