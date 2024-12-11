@@ -1,3 +1,5 @@
+import typing as t
+
 import u
 
 
@@ -30,3 +32,12 @@ print(accel < 0, accel <= 0, accel == 0, accel != 0, accel >= 0, accel > 0)
 a: u.Quantity[u.DISTANCE | u.DURATION] = u.seconds(3)
 b: u.Quantity[u.MUL[u.DISTANCE | u.DURATION, u.DATA_VOLUME]] = (u.seconds * u.bytes)(3)
 c: u.Quantity[u.DIV[u.DISTANCE | u.DURATION, u.DATA_VOLUME]] = (u.seconds / u.bytes)(3)
+
+# Make sure TypeVars work as expected
+Q = t.TypeVar("Q", bound=u.QUANTITY)
+
+ZeroOrQuantity = t.Literal[0] | u.Quantity[Q]
+ZeroOrDuration = ZeroOrQuantity[u.DURATION]
+
+Speed = u.Quantity[u.DIV[Q, u.DURATION]]
+DownloadSpeed = Speed[u.DATA_VOLUME]

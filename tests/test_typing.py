@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 import typing as t
@@ -8,7 +9,9 @@ import pytest
 import u
 
 
-def test_typevar():
+def test_typevars_at_runtime():
+    # PyRight *really* doesn't like typing stuff inside of a function, which is why there are so
+    # many `type: ignore`s here.
     Q = t.TypeVar("Q", bound=u.QUANTITY)
 
     ZeroOrQuantity = t.Literal[0] | u.Quantity[Q]  # type: ignore
@@ -79,3 +82,13 @@ def test_static_tests_file():
     # errors. (I even made sure that the CWD was set to the project directory and that PYTHONPATH
     # was cleared.)
     validate_typing(file_path.read_text())
+
+
+def test_readme_code():
+    file_path = Path(__file__).absolute().parent.parent / "README.md"
+
+    code_block_regex = re.compile(r"```.*\n(.*?)```", flags=re.S)
+
+    for match in code_block_regex.finditer(file_path.read_text()):
+        snippet = "import u\n" + match.group(1)
+        validate_typing(snippet)
