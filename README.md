@@ -66,7 +66,7 @@ ACCELERATION = typing.Union[
 ]
 Acceleration = u.Quantity[ACCELERATION]
 
-accel: Acceleration = (u.mps / u.s)(1)  # Ok
-accel = (u.meters / u.s**2)(1)  # Also ok
-accel = (u.mps2 * u.kelvins / u.kelvins)(1)  # Type checking error
+accel: Acceleration = (u.meters_per_second / u.second)(1)  # Ok
+accel = (u.meter / u.second**2)(1)  # Also ok
+accel = (u.meters_per_second_squared * u.kelvins / u.kelvins)(1)  # Type checking error
 ```
