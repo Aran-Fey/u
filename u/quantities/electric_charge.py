@@ -7,7 +7,7 @@ from ..unit import Unit
 
 # fmt: off
 __all__ = [
-    "ElectricCharge",
+    "ELECTRIC_CHARGE", "ElectricCharge",
     "coulombs", "coulomb", "C",
 ]
 # fmt: on

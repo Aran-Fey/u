@@ -4,9 +4,24 @@ import sys
 import typing as t
 from pathlib import Path
 
+import mypy.api
 import pytest
 
 import u
+
+
+def validate_typing(code: str, *, disabled_error_codes: t.Iterable[str] = ()) -> None:
+    cmd = [sys.executable, "-m", "mypy", "-c", f"import typing\nimport u\n{code}"]
+
+    for error_code in disabled_error_codes:
+        cmd += ["--disable-error-code", error_code]
+
+    process = subprocess.run(cmd, capture_output=True, text=True)
+
+    if process.returncode == 0:
+        return
+
+    raise Exception(process.stdout)
 
 
 def test_typevars_at_runtime():
@@ -19,19 +34,6 @@ def test_typevars_at_runtime():
 
     Speed = u.Quantity[u.DIV[Q, u.DURATION]]  # type: ignore
     DownloadSpeed = Speed[u.DATA_VOLUME]  # type: ignore
-
-
-def validate_typing(code: str) -> None:
-    process = subprocess.run(
-        [sys.executable, "-m", "mypy", "-c", f"import u\n{code}"],
-        capture_output=True,
-        text=True,
-    )
-
-    if process.returncode == 0:
-        return
-
-    raise Exception(process.stderr)
 
 
 @pytest.mark.parametrize(
@@ -87,8 +89,34 @@ def test_static_tests_file():
 def test_readme_code():
     file_path = Path(__file__).absolute().parent.parent / "README.md"
 
-    code_block_regex = re.compile(r"```.*\n(.*?)```", flags=re.S)
+    code_block_regex = re.compile(r"```(?:python|py)?\n(.*?)```", flags=re.S)
+    mypy_error_regex = re.compile(r"<string>:(\d+): error: (.*)")
 
     for match in code_block_regex.finditer(file_path.read_text()):
-        snippet = "import u\n" + match.group(1)
-        validate_typing(snippet)
+        snippet = match.group(1).strip()
+
+        try:
+            validate_typing(snippet, disabled_error_codes=["no-redef"])
+        except Exception as error:
+            lines_with_errors = {
+                int(match.group(1)) - 2: match.group(2)
+                for match in mypy_error_regex.finditer(str(error))
+            }
+        else:
+            lines_with_errors = {}
+
+        errors_expected_on_lines = {
+            line_nr
+            for line_nr, line in enumerate(snippet.splitlines(), 1)
+            if "# Type checking error" in line
+        }
+
+        for line_nr, error in lines_with_errors.items():
+            assert (
+                line_nr in errors_expected_on_lines
+            ), f"Unexpected type checking error.\nCode:\n{snippet}\nError in line {line_nr}: {error}"
+
+        for line_nr in errors_expected_on_lines - lines_with_errors.keys():
+            assert (
+                False
+            ), f"Expected error in line {line_nr}, but there wasn't one.\nCode:\n{snippet}"

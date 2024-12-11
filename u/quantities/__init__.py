@@ -7,6 +7,7 @@ from .distance import *
 from .duration import *
 from .electric_charge import *
 from .electric_current import *
+from .electric_resistance import *
 from .data_volume import *
 from .force import *
 from .frequency import *
