@@ -2,7 +2,7 @@ from .duration import DURATION, seconds
 from .one import ONE, one
 from ..prefixes import kilo, mega, giga
 from ..quantity import Quantity
-from ..quantity_caps import DIV
+from ..capital_quantities import DIV
 from ..unit import Unit
 
 

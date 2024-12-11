@@ -73,13 +73,9 @@ def test_typing_error(expr: str):
 
 def test_static_tests_file():
     file_path = Path(__file__).parent / "static_tests.py"
-    process = subprocess.run(
-        [sys.executable, "-m", "mypy", str(file_path)],
-        capture_output=True,
-        text=True,
-    )
 
-    if process.returncode == 0:
-        return
-
-    raise Exception(process.stderr)
+    # Note: Originally, this code passed the file path to mypy instead of reading the contents into
+    # memory. But for some godforsaken reason, that made mypy detect all sorts of nonsensical
+    # errors. (I even made sure that the CWD was set to the project directory and that PYTHONPATH
+    # was cleared.)
+    validate_typing(file_path.read_text())

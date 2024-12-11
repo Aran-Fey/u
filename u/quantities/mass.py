@@ -1,6 +1,6 @@
 from ..prefixes import nano, micro, milli, centi, deci, kilo, mega
 from ..quantity import Quantity
-from ..quantity_caps import QUANTITY
+from ..capital_quantities import QUANTITY
 from ..unit import Unit
 
 

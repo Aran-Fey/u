@@ -112,8 +112,9 @@ def join_symbols(symbol1: str, symbol2: str, operator: str) -> str:
 
 class ExponentDict(collections.abc.Mapping[type["u.QUANTITY"], int]):
     def __init__(self, exponents: t.Mapping[type[u.QUANTITY], int]):
-        # Make sure it's *not* a defaultdict, because accessing a non-existent key would change the
-        # size of the dict, which we don't want
+        # We're converting to a dict for 2 reasons:
+        # 1. Makes implementing `__repr__` trivial
+        # 2. If it's a defaultdict, we don't have to worry about accidentally mutating it
         self._exponents = dict(exponents)
 
     def __getitem__(self, quantity: type[u.QUANTITY]) -> int:

@@ -1,7 +1,7 @@
 from .duration import DURATION, seconds
 from .electric_current import ELECTRIC_CURRENT, amperes
 from ..quantity import Quantity
-from ..quantity_caps import MUL
+from ..capital_quantities import MUL
 from ..unit import Unit
 
 

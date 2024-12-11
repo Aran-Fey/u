@@ -9,7 +9,7 @@ import typing as t
 import u
 
 from ._utils import UNION_TYPES, ExponentDict, str_exponent
-from .quantity_caps import QUANTITY, DIV, MUL, _MUL
+from .capital_quantities import QUANTITY, DIV, MUL, MUL_
 
 
 __all__ = ["Quantity", "NullableQuantity"]
@@ -30,12 +30,14 @@ QUANTITY_ALIASES_BY_EXPONENTS = dict[FrozenExponents, "QuantityAlias"]()
 class QuantityAlias(types.GenericAlias):
     exponents: ExponentDict
     units: t.Sequence[u.Unit]
+    prefixes: t.Sequence[u.Prefix]
 
     def __new__(cls, typ, subtype, exponents: ExponentDict):
         self = super().__new__(cls, typ, subtype)
 
         self.exponents = exponents
         self.units = []
+        self.prefixes = u.SI_PREFIXES
 
         return self
 
@@ -125,7 +127,7 @@ def _add_exponents(quantity, exponents: collections.defaultdict[t.Type[QUANTITY]
         # recurse.
         quantity = args[0]
         _add_exponents(quantity, exponents)
-    elif origin is _MUL:
+    elif origin is MUL_:
         _add_exponents(args[0], exponents)
         _add_exponents(args[1], exponents)
     else:
@@ -154,6 +156,14 @@ class QuantityMeta(type(t.Generic)):
     @property
     def base_unit(cls) -> u.Unit:
         raise TypeError(f"Unparameterized {cls} has no units")
+
+    @property
+    def prefixes(cls) -> t.Sequence[u.Prefix]:
+        raise TypeError(f"Unparameterized {cls} has no prefixes")
+
+    @prefixes.setter
+    def prefixes(cls, prefixes: t.Sequence[u.Prefix]) -> None:
+        raise TypeError(f"Unparameterized {cls} cannot have prefixes")
 
 
 class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
@@ -381,64 +391,86 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             )
 
     def __repr__(self) -> str:
-        return f"{self._value}{self.unit.symbol}"
+        return f"{self._value} {self.unit.symbol}"
 
     def __str__(self) -> str:
-        value = self._value * self.unit.multiplier
-
-        # Special case: If the value is 0, use the base unit
-        if math.isclose(value, 0):
-            base_unit = self.unit.quantity.base_unit
-            return f"0 {base_unit.symbol}"
-
-        exponents = self.unit.quantity.exponents
-
-        # If this isn't a compound unit, keep it simple
-        if len(exponents) == 1:
-            exponent = next(iter(exponents.values()))
-
-            unit = find_most_suitable_unit(value, self.quantity.units, exponent)
-            value /= unit.multiplier
-
-            quantity_caps: type[QUANTITY] = t.get_args(unit.quantity)[0]
-            prefixes = quantity_caps.PREFIXES
-        else:
-            unit = self.quantity.base_unit
-            exponent = 1
-
-            prefixes = u.SI_PREFIXES
-
-        prefix = find_most_suitable_prefix(value, prefixes, exponent)
-        value /= prefix.multiplier
+        value, unit = self._find_unit_for_str()
 
         if value.is_integer():
             value_str = str(int(value))
         else:
             value_str = format(value, ".1f")
 
-        return f"{value_str} {prefix.symbol}{unit.symbol}"
+        return f"{value_str} {unit.symbol}"
+
+    def _find_unit_for_str(self) -> tuple[float, u.Unit[Q_co]]:
+        value = self._value * self.unit.multiplier
+
+        # Special case: If the value is 0, use the base unit
+        if math.isclose(value, 0):
+            return 0, self.unit.quantity.base_unit
+
+        # We want to find a suitable (i.e. human-readable) representation of this quantity, which
+        # means we want to output a "short" number (with few digits). This is a non-trivial problem.
+        # We won't bother looking for a better representation if the current unit works well enough.
+        digits, _, decimal_digits = str(self._value).partition(".")
+        if len(digits.lstrip("-")) < 4 and len(decimal_digits) < 4:
+            return self._value, self.unit
+
+        unit = _find_most_suitable_unit(value, self.unit.quantity.exponents)
+        value /= unit.multiplier
+        return value, unit
 
 
 NullableQuantity = t.Union[Quantity[Q2], t.Literal[0]]
 
 
-def find_most_suitable_unit(value: float, units: t.Iterable[u.Unit], exponent: int) -> u.Unit:
-    return _find_most_suitable_multiplier(value, units, exponent)
+def _find_most_suitable_unit(value: float, exponents: ExponentDict) -> u.Unit:
+    # Goal: Find the combination of units that results in the *shortest* (i.e. fewest digits)
+    # number.
+    #
+    # This is essentially a knapsack problem, which doesn't really have an efficient algorithm.
+    # Considering that this is only used for the `__str__` method, I don't want to burn too much
+    # time on finding the optimal solution. A fast approximation will have to do.
+
+    # TODO: Maybe we could pre-compute some kind of acceleration structure? Like "For values between
+    # 0 and 999, use meters. Upwards of 1000, use kilometers". I'm afraid the structure might get
+    # very large if multiple units and prefixes are involved, though.
+
+    # We'll use a greedy algorithm. We'll assume that there's always a unit with a factor of 1, so
+    # we don't need to plan ahead. We'll start with the largest exponent, pick the largest possible
+    # unit, and if that's not enough, add a prefix as well. Then we'll move on to the next
+    # dimension.
+    sorted_units = [
+        [unit**exponent for unit in Quantity[quantity].units]
+        for quantity, exponent in sorted(exponents.items(), key=lambda pair: pair[1], reverse=True)
+    ]
+
+    result = u.one
+    for units in sorted_units:
+        best_unit = _find_most_suitable_multiplier(value, units)
+        value /= best_unit.multiplier
+
+        best_prefix = _find_most_suitable_prefix(value, best_unit.quantity.prefixes)
+        value /= best_prefix.multiplier
+
+        result *= best_prefix(best_unit)
+
+    return result
 
 
-def find_most_suitable_prefix(
-    value: float, prefixes: t.Iterable[u.Prefix], exponent: int
-) -> u.Prefix:
+def _find_most_suitable_prefix(value: float, prefixes: t.Iterable[u.Prefix]) -> u.Prefix:
     prefixes = list(prefixes)
     prefixes.append(u.prefixes.DUMMY_PREFIX)
 
-    return _find_most_suitable_multiplier(value, prefixes, exponent)
+    return _find_most_suitable_multiplier(value, prefixes)
 
 
-def _find_most_suitable_multiplier(
-    value: float, things: t.Iterable[u.Unit | u.Prefix], exponent: int
-) -> t.Any:
-    candidates = [thing for thing in things if thing.multiplier**exponent <= value]
+T = t.TypeVar("T", "u.Unit", "u.Prefix")
+
+
+def _find_most_suitable_multiplier(value: float, things: t.Iterable[T]) -> T:
+    candidates = [thing for thing in things if thing.multiplier <= value]
 
     if candidates:
         return max(candidates, key=lambda thing: thing.multiplier)

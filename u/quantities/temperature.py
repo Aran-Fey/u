@@ -1,5 +1,5 @@
 from ..quantity import Quantity
-from ..quantity_caps import QUANTITY
+from ..capital_quantities import QUANTITY
 from ..unit import Unit
 
 __all__ = ["TEMPERATURE", "Temperature", "kelvins", "kelvin", "K"]
@@ -12,7 +12,10 @@ class TEMPERATURE(QUANTITY):
 Temperature = Quantity[TEMPERATURE]
 
 
-# FIXME: What happens if you add two temperatures?
 kelvins = kelvin = K = Unit(Temperature, "K", 1)
+
+# TODO: Celsius and Fahrenheit aren't compatible with the current design, since 0 doesn't mean
+# "nothing".
+
 # celsius = C = Unit(Temperature, "°C", offset=273.15)
 # fahrenheit = F = Unit(Temperature, "°F", formula=((BASE_UNIT - 273.15) * 1.8) + 32)

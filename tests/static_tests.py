@@ -1,7 +1,8 @@
 import u
 
 
-accel: u.Acceleration = u.mps2(5)  # Is this a valid type annotation?
+# Are Quantities valid type annotations?
+accel: u.Acceleration = u.mps2(5)
 
 # Do quantities have the expected attributes/methods?
 u.Speed.exponents

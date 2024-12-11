@@ -29,13 +29,13 @@ def test_to_number(value: u.Quantity, unit: u.Unit, expected_result: float):
 @pytest.mark.parametrize(
     "value, expected_result",
     [
-        (u.meters(7), "7m"),
-        (u.kilometers(3.5), "3.5km"),
-        (u.meters_per_second(5), "5m/s"),
-        (u.square_meters(3), "3m²"),
-        (((u.meters / u.second) / u.second)(2), "2m/s²"),
-        ((u.meters / u.second**2)(4), "4m/s²"),
-        ((1 / u.meters)(5), "5m⁻¹"),
+        (u.meters(7), "7 m"),
+        (u.kilometers(3.5), "3.5 km"),
+        (u.meters_per_second(5), "5 m/s"),
+        (u.square_meters(3), "3 m²"),
+        (((u.meters / u.second) / u.second)(2), "2 m/s²"),
+        ((u.meters / u.second**2)(4), "4 m/s²"),
+        ((1 / u.meters)(5), "5 m⁻¹"),
     ],
 )
 def test_repr(value: u.Quantity, expected_result: str):

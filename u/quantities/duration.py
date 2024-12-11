@@ -1,6 +1,6 @@
 from ..prefixes import SI_PREFIXES, milli
 from ..quantity import Quantity
-from ..quantity_caps import QUANTITY
+from ..capital_quantities import QUANTITY
 from ..unit import Unit
 
 
@@ -22,10 +22,11 @@ __all__ = [
 
 
 class DURATION(QUANTITY):
-    PREFIXES = SI_PREFIXES[: SI_PREFIXES.index(milli) + 1]
+    pass
 
 
 Duration = Quantity[DURATION]
+Duration.prefixes = SI_PREFIXES[: SI_PREFIXES.index(milli) + 1]
 
 
 seconds = second = sec = s = Unit(Duration, "s", 1)

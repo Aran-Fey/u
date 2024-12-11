@@ -4,7 +4,7 @@ from .distance import DISTANCE, m
 from .duration import DURATION, s
 from .mass import MASS, kg
 from ..quantity import Quantity
-from ..quantity_caps import DIV, MUL, SQUARE
+from ..capital_quantities import DIV, MUL, SQUARE
 from ..unit import Unit
 
 

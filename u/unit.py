@@ -8,7 +8,7 @@ import u
 
 from ._utils import cached, join_symbols, parse_symbol
 from .quantity import Quantity
-from .quantity_caps import QUANTITY, DIV, MUL, Q2
+from .capital_quantities import QUANTITY, DIV, MUL, Q2
 
 
 __all__ = ["Unit"]
@@ -185,9 +185,23 @@ class Unit(t.Generic[Q_co]):
 
     @cached
     def __truediv__(self, other: Unit[Q2], /) -> Unit[DIV[Q_co, Q2]]:
+        if (
+            t.get_args(self.quantity)[0].__name__ == "ONE"
+            and "*" not in other.symbol
+            and "/" not in other.symbol
+        ):
+            if "*" in other.symbol or "/" in other.symbol:
+                symbol = f"({other.symbol})⁻¹"
+            else:
+                symbol = other.symbol + "⁻¹"
+        elif "*" in other.symbol or "(" in other.symbol:
+            symbol = join_symbols(self.symbol, other.symbol, "/(") + ")"
+        else:
+            symbol = join_symbols(self.symbol, other.symbol, "/")
+
         return UnregisteredUnit(
             join_quantities(self.quantity, other.quantity, DIV),
-            join_symbols(self.symbol, other.symbol, "/"),
+            symbol,
             self.multiplier / other.multiplier,
         )
 

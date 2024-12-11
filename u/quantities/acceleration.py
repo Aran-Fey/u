@@ -1,7 +1,7 @@
 import typing as t
 
 from ..quantity import Quantity
-from ..quantity_caps import DIV, SQUARE
+from ..capital_quantities import DIV, SQUARE
 from .distance import DISTANCE, meters, kilometers
 from .duration import DURATION, second, hour
 from .speed import SPEED

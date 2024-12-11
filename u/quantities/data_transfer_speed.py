@@ -1,7 +1,7 @@
 from .data_volume import DATA_VOLUME, bytes, kilobytes, megabytes, gigabytes, terabytes
 from .duration import DURATION, second
 from ..quantity import Quantity
-from ..quantity_caps import DIV
+from ..capital_quantities import DIV
 
 
 # fmt: off

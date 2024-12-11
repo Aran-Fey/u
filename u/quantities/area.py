@@ -1,6 +1,6 @@
 from .distance import DISTANCE, meter, kilometer
 from ..quantity import Quantity
-from ..quantity_caps import MUL
+from ..capital_quantities import MUL
 
 
 # fmt: off
