@@ -26,5 +26,3 @@ Acceleration = Quantity[ACCELERATION]
 
 meters_per_second_squared = mps2 = meters / (second**2)
 kilometers_per_hour_squared = kph2 = kilometers / (hour**2)
-
-accel: Acceleration = mps2(3)

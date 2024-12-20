@@ -19,6 +19,10 @@ u.Speed.parse("3m/s")
 u.Acceleration.parse("3m/s²")
 
 
+# Is math type safe?
+area: u.Area = (u.m * u.m)(1)
+distance: u.Distance = (u.m2 / u.m)(1)
+
 # Math with numbers
 print(-accel)
 print(accel * 3)
@@ -41,3 +45,8 @@ ZeroOrDuration = ZeroOrQuantity[u.DURATION]
 
 Speed = u.Quantity[u.DIV[Q, u.DURATION]]
 DownloadSpeed = Speed[u.DATA_VOLUME]
+
+
+foo = u.m2 * u.kelvins
+bar = foo / u.kelvins
+area: u.Area = bar(1)

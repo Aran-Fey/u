@@ -56,17 +56,9 @@ taste: Tastiness = yum(42)
 
 ## Caveats
 
-Since type checkers don't understand math, calculations involving different types of quantities are
-only type safe as long as they follow a pre-defined order. For example:
+Since type checkers don't understand math, calculations involving different types of quantities
+sometimes cause type checkers to complain even though they're correct. For example:
 
 ```python
-ACCELERATION = typing.Union[
-    u.DIV[u.SPEED, u.DURATION],
-    u.DIV[u.DISTANCE, u.SQUARE[u.DURATION]],
-]
-Acceleration = u.Quantity[ACCELERATION]
-
-accel: Acceleration = (u.meters_per_second / u.second)(1)  # Ok
-accel = (u.meter / u.second**2)(1)  # Also ok
-accel = (u.meters_per_second_squared * u.kelvins / u.kelvins)(1)  # Type checking error
+area: u.Area = (u.m2 * u.kelvins / u.kelvins)(1)  # Type checking error
 ```
