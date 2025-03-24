@@ -8,6 +8,7 @@ from ._utils import cached
 
 __all__ = [
     "Prefix",
+    "STANDARD_SI_PREFIXES",
     "SI_PREFIXES",
     "BINARY_PREFIXES",
     "atto",
@@ -98,6 +99,30 @@ zetta = Prefix("Z", 1e21)
 yotta = Prefix("Y", 1e24)
 ronna = Prefix("R", 1e27)
 quetta = Prefix("Q", 1e30)
+
+
+STANDARD_SI_PREFIXES = (
+    quecto,
+    ronto,
+    yocto,
+    zepto,
+    atto,
+    femto,
+    pico,
+    nano,
+    micro,
+    milli,
+    kilo,
+    mega,
+    giga,
+    tera,
+    peta,
+    exa,
+    zetta,
+    yotta,
+    ronna,
+    quetta,
+)
 
 SI_PREFIXES = (
     quecto,

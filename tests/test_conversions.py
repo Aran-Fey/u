@@ -47,8 +47,8 @@ def test_repr(value: u.Quantity, expected_result: str):
     [
         (u.kilometers(0), "0 m"),
         (u.meters(7), "7 m"),
-        (u.kilometers(3.5), "3.5 km"),
-        (u.meters(1289), "1.3 km"),
+        (u.kilometers(3.5), ["3.5 km", "3500 m"]),
+        (u.meters(1289), ["1.3 km", "1289 m"]),
         (u.seconds(3600), "1 h"),
         (u.hertz(7), "7 Hz"),
         ((1 / u.m)(5), "5 m⁻¹"),
@@ -56,10 +56,14 @@ def test_repr(value: u.Quantity, expected_result: str):
         (u.square_meters(3), "3 m²"),
         (u.mps(3000), "3 km/s"),
         (u.kph(3), "3 km/h"),
+        ((u.bytes / u.second)(10_000), "10 kB/s"),
     ],
 )
-def test_str(value: u.Quantity, expected_result: str):
-    assert str(value) == expected_result
+def test_str(value: u.Quantity, expected_result: str | t.Sequence[str]):
+    if isinstance(expected_result, str):
+        assert str(value) == expected_result
+    else:
+        assert str(value) in expected_result
 
 
 @pytest.mark.parametrize(

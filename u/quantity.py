@@ -37,7 +37,7 @@ class QuantityAlias(types.GenericAlias):
 
         self.exponents = exponents
         self.units = []
-        self.prefixes = u.SI_PREFIXES
+        self.prefixes = u.STANDARD_SI_PREFIXES
 
         return self
 
@@ -417,15 +417,13 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         if len(digits.lstrip("-")) < 4 and len(decimal_digits) < 4:
             return self._value, self.unit
 
-        unit = _find_most_suitable_unit(value, self.unit.quantity.exponents)
-        value /= unit.multiplier
-        return value, unit
+        return _find_most_suitable_unit(value, self.unit.quantity.exponents)
 
 
 NullableQuantity = t.Union[Quantity[Q2], t.Literal[0]]
 
 
-def _find_most_suitable_unit(value: float, exponents: ExponentDict) -> u.Unit:
+def _find_most_suitable_unit(value: float, exponents: ExponentDict) -> tuple[float, u.Unit]:
     # Goal: Find the combination of units that results in the *shortest* (i.e. fewest digits)
     # number.
     #
@@ -441,22 +439,43 @@ def _find_most_suitable_unit(value: float, exponents: ExponentDict) -> u.Unit:
     # we don't need to plan ahead. We'll start with the largest exponent, pick the largest possible
     # unit, and if that's not enough, add a prefix as well. Then we'll move on to the next
     # dimension.
-    sorted_units = [
-        [unit**exponent for unit in Quantity[quantity].units]
-        for quantity, exponent in sorted(exponents.items(), key=lambda pair: pair[1], reverse=True)
-    ]
+    unit = u.one
 
-    result = u.one
-    for units in sorted_units:
-        best_unit = _find_most_suitable_multiplier(value, units)
+    for quantity, exponent in sorted(exponents.items(), key=lambda pair: pair[1], reverse=True):
+        best_unit = _find_most_suitable_basic_unit(value, Quantity[quantity].units, exponent)
+
+        value /= best_unit.multiplier
+        unit *= best_unit
+
+    return value, unit
+
+
+def _find_most_suitable_basic_unit(
+    value: float, sorted_units: t.Iterable[u.Unit], exponent: int
+) -> u.Unit:
+    sorted_units = [unit**exponent for unit in sorted_units]
+    best_unit = _find_most_suitable_multiplier(value, sorted_units)
+
+    # There are a few situations where we'll try to add a prefix:
+    # - The largest available unit was selected
+    # - There is a huge gap between the selected unit and the next one, like meter and lightsecond.
+    add_prefix = best_unit is sorted_units[-1]
+    if not add_prefix:
+        selected_index = sorted_units.index(best_unit)
+        try:
+            next_unit = sorted_units[selected_index + 1]
+        except IndexError:
+            pass
+        else:
+            add_prefix = next_unit.multiplier / best_unit.multiplier > 1000
+
+    if add_prefix:
         value /= best_unit.multiplier
 
-        best_prefix = _find_most_suitable_prefix(value, best_unit.quantity.prefixes)
-        value /= best_prefix.multiplier
+        prefix = _find_most_suitable_prefix(value, best_unit.quantity.prefixes)
+        best_unit = prefix(best_unit)
 
-        result *= best_prefix(best_unit)
-
-    return result
+    return best_unit
 
 
 def _find_most_suitable_prefix(value: float, prefixes: t.Iterable[u.Prefix]) -> u.Prefix:

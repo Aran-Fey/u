@@ -8,7 +8,7 @@ import u
 
 from ._utils import cached, join_symbols, parse_symbol
 from .quantity import Quantity
-from .capital_quantities import QUANTITY, DIV, MUL, Q1, Q2
+from .capital_quantities import QUANTITY, DIV, MUL, Q2
 
 
 __all__ = ["Unit"]
@@ -183,14 +183,8 @@ class Unit(t.Generic[Q_co]):
             self.multiplier * other.multiplier,
         )
 
-    @t.overload
-    def __truediv__(self: Unit[MUL[Q1, Q2]], other: Unit[Q2], /) -> Unit[Q1]: ...
-
-    @t.overload
-    def __truediv__(self, other: Unit[Q2], /) -> Unit[DIV[Q_co, Q2]]: ...
-
     @cached
-    def __truediv__(self, other: Unit[Q2], /) -> Unit:
+    def __truediv__(self, other: Unit[Q2], /) -> Unit[DIV[Q_co, Q2]]:
         if (
             t.get_args(self.quantity)[0].__name__ == "ONE"
             and "*" not in other.symbol
