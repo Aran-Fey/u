@@ -417,13 +417,13 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         if len(digits.lstrip("-")) < 4 and len(decimal_digits) < 4:
             return self._value, self.unit
 
-        return _find_most_suitable_unit(value, self.unit.quantity.exponents)
+        return _find_most_suitable_unit(value, self.unit.quantity)
 
 
 NullableQuantity = t.Union[Quantity[Q2], t.Literal[0]]
 
 
-def _find_most_suitable_unit(value: float, exponents: ExponentDict) -> tuple[float, u.Unit]:
+def _find_most_suitable_unit(value: float, quantity: type[Quantity]) -> tuple[float, u.Unit]:
     # Goal: Find the combination of units that results in the *shortest* (i.e. fewest digits)
     # number.
     #
@@ -439,21 +439,29 @@ def _find_most_suitable_unit(value: float, exponents: ExponentDict) -> tuple[flo
     # we don't need to plan ahead. We'll start with the largest exponent, pick the largest possible
     # unit, and if that's not enough, add a prefix as well. Then we'll move on to the next
     # dimension.
-    unit = u.one
 
-    for quantity, exponent in sorted(exponents.items(), key=lambda pair: pair[1], reverse=True):
-        best_unit = _find_most_suitable_basic_unit(value, Quantity[quantity].units, exponent)
+    # First, find out which units exist for this quantity. If there is a dedicated unit, like there
+    # is Coloumbs for DURATION*ELECTRIC_CURRENT, we'll use that.
+    if quantity.units:
+        unit = _find_most_suitable_unit_from_list(value, quantity.units)
+        value /= unit.multiplier
+    else:
+        unit = u.one
 
-        value /= best_unit.multiplier
-        unit *= best_unit
+        for quantity_caps, exponent in sorted(
+            quantity.exponents.items(), key=lambda pair: pair[1], reverse=True
+        ):
+            sorted_units = [unit**exponent for unit in Quantity[quantity_caps].units]
+            best_unit = _find_most_suitable_unit_from_list(value, sorted_units)
+
+            value /= best_unit.multiplier
+            unit *= best_unit
 
     return value, unit
 
 
-def _find_most_suitable_basic_unit(
-    value: float, sorted_units: t.Iterable[u.Unit], exponent: int
-) -> u.Unit:
-    sorted_units = [unit**exponent for unit in sorted_units]
+def _find_most_suitable_unit_from_list(value: float, sorted_units: t.Sequence[u.Unit]) -> u.Unit:
+    # From the available units, find the most suitable one
     best_unit = _find_most_suitable_multiplier(value, sorted_units)
 
     # There are a few situations where we'll try to add a prefix:
