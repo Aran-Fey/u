@@ -62,6 +62,9 @@ class Prefix:
 
     @cached
     def __call__(self, unit: u.Unit[Q]) -> u.Unit[Q]:
+        if isinstance(unit, u.unit.UnregisteredUnit):
+            raise ValueError('Prefixes cannot be applied to compound units') from None
+
         return u.unit.UnregisteredUnit(
             unit.quantity,
             self.symbol + unit.symbol,

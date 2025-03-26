@@ -443,7 +443,7 @@ def _find_most_suitable_unit(value: float, quantity: type[Quantity]) -> tuple[fl
     # First, find out which units exist for this quantity. If there is a dedicated unit, like there
     # is Coloumbs for DURATION*ELECTRIC_CURRENT, we'll use that.
     if quantity.units:
-        unit = _find_most_suitable_unit_from_list(value, quantity.units)
+        unit = _find_most_suitable_unit_and_prefix(value, quantity.units)
         value /= unit.multiplier
     else:
         unit = u.one
@@ -451,8 +451,9 @@ def _find_most_suitable_unit(value: float, quantity: type[Quantity]) -> tuple[fl
         for quantity_caps, exponent in sorted(
             quantity.exponents.items(), key=lambda pair: pair[1], reverse=True
         ):
-            sorted_units = [unit**exponent for unit in Quantity[quantity_caps].units]
-            best_unit = _find_most_suitable_unit_from_list(value, sorted_units)
+            best_unit = _find_most_suitable_unit_and_prefix(
+                value, Quantity[quantity_caps].units, exponent
+            )
 
             value /= best_unit.multiplier
             unit *= best_unit
@@ -460,44 +461,49 @@ def _find_most_suitable_unit(value: float, quantity: type[Quantity]) -> tuple[fl
     return value, unit
 
 
-def _find_most_suitable_unit_from_list(value: float, sorted_units: t.Sequence[u.Unit]) -> u.Unit:
-    # From the available units, find the most suitable one
-    best_unit = _find_most_suitable_multiplier(value, sorted_units)
+def _find_most_suitable_unit_and_prefix(
+    value: float, sorted_units: t.Sequence[u.Unit], exponent: int = 1
+) -> u.Unit:
+    # Because prefixes cannot be applied to compound units (like m²), we can't just find a suitable
+    # unit and then apply a prefix to it. We have to apply the prefix first, and then the exponent.
+
+    unit = _find_most_suitable_multiplier(
+        value,
+        sorted_units,
+        # Ignore the polarity of the exponent. Negative exponents will be prefixed with a `/`
+        # symbol, which effectively makes them positive.
+        abs(exponent),
+    )
 
     # There are a few situations where we'll try to add a prefix:
     # - The largest available unit was selected
     # - There is a huge gap between the selected unit and the next one, like meter and lightsecond.
-    add_prefix = best_unit is sorted_units[-1]
+    add_prefix = unit is sorted_units[-1]
     if not add_prefix:
-        selected_index = sorted_units.index(best_unit)
+        selected_index = sorted_units.index(unit)
         try:
             next_unit = sorted_units[selected_index + 1]
         except IndexError:
             pass
         else:
-            add_prefix = next_unit.multiplier / best_unit.multiplier > 1000
+            add_prefix = next_unit.multiplier / unit.multiplier > 1000
 
     if add_prefix:
-        value /= best_unit.multiplier
+        prefixes = list(unit.quantity.prefixes)
+        prefixes.append(u.prefixes.DUMMY_PREFIX)
 
-        prefix = _find_most_suitable_prefix(value, best_unit.quantity.prefixes)
-        best_unit = prefix(best_unit)
+        unit = _find_most_suitable_multiplier(
+            value, [prefix(unit) for prefix in prefixes], exponent
+        )
 
-    return best_unit
-
-
-def _find_most_suitable_prefix(value: float, prefixes: t.Iterable[u.Prefix]) -> u.Prefix:
-    prefixes = list(prefixes)
-    prefixes.append(u.prefixes.DUMMY_PREFIX)
-
-    return _find_most_suitable_multiplier(value, prefixes)
+    return unit**exponent
 
 
 T = t.TypeVar("T", "u.Unit", "u.Prefix")
 
 
-def _find_most_suitable_multiplier(value: float, things: t.Iterable[T]) -> T:
-    candidates = [thing for thing in things if thing.multiplier <= value]
+def _find_most_suitable_multiplier(value: float, things: t.Iterable[T], exponent: int = 1) -> T:
+    candidates = [thing for thing in things if thing.multiplier**exponent <= value]
 
     if candidates:
         return max(candidates, key=lambda thing: thing.multiplier)

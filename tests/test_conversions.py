@@ -53,12 +53,15 @@ def test_repr(value: u.Quantity, expected_result: str):
         (u.hertz(70_000), "70 kHz"),
         (u.coulombs(20_000), "20 kC"),
         ((1 / u.m)(5), "5 m⁻¹"),
-        # (u.hours(1000), "1000 h"),
+        (u.hours(1000), ["1000 h", "41.7 d"]),
         (u.square_meters(3), "3 m²"),
         (u.mps(3000), "3 km/s"),
         (u.kph(3), "3 km/h"),
+        (u.mps(1 / 60), ["1 m/min", "16.7 mm/s"]),
         ((u.bytes / u.second)(10_000), "10 kB/s"),
+        (u.square_meters(3_000_000), "3 km²"),
     ],
+    ids=lambda value: repr(value),
 )
 def test_str(value: u.Quantity, expected_result: str | t.Sequence[str]):
     if isinstance(expected_result, str):
