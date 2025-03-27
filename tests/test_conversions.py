@@ -63,7 +63,7 @@ def test_repr(value: u.Quantity, expected_result: str):
     ],
     ids=lambda value: repr(value),
 )
-def test_str(value: u.Quantity, expected_result: str | t.Sequence[str]):
+def test_str(value: u.Quantity, expected_result: t.Union[str, t.Sequence[str]]):
     if isinstance(expected_result, str):
         assert str(value) == expected_result
     else:
@@ -84,7 +84,7 @@ def test_str(value: u.Quantity, expected_result: str | t.Sequence[str]):
         ("3C", u.ElectricCharge, u.coulombs(3)),
     ],
 )
-def test_parse(text: str, quantity: t.Type[u.Quantity], expected_result: u.Quantity):
+def test_parse(text: str, quantity: type[u.Quantity], expected_result: u.Quantity):
     assert quantity.parse(text) == expected_result
 
 
@@ -98,6 +98,6 @@ def test_parse(text: str, quantity: t.Type[u.Quantity], expected_result: u.Quant
         ("8s⁻¹", u.ElectricCharge),
     ],
 )
-def test_parse_as_wrong_quantity(text: str, quantity: t.Type[u.Quantity]):
+def test_parse_as_wrong_quantity(text: str, quantity: type[u.Quantity]):
     with pytest.raises(ValueError):
         quantity.parse(text)

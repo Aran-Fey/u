@@ -2,21 +2,14 @@
 name = "u"
 description = "Statically typed units"
 authors = [{ name = "Aran-Fey", email = "rawing7@gmail.com" }]
-dependencies = ["typing-extensions", "revel>=0.9.0"]
 readme = "README.md"
-requires-python = ">= 3.9.2"
 dynamic = ["version"]
+requires-python = ">= 3.9.2"
+dependencies = ["typing-extensions"]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
-[tool.hatch.version]
-path = "u/__init__.py"
-
-[tool.rye]
-managed = true
-dev-dependencies = ["pytest", "mypy>=1.10.0"]
-
-[tool.hatch.build.targets.wheel]
-packages = ["u"]
+[dependency-groups]
+dev = ["pytest", "mypy>=1.10.0"]

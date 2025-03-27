@@ -21,7 +21,7 @@ class MUL_(t.Generic[Q1, Q2], QUANTITY): ...
 class DIV(t.Generic[Q1, Q2], QUANTITY): ...
 
 
-MUL = MUL_[Q1, Q2] | MUL_[Q2, Q1]
+MUL = t.Union[MUL_[Q1, Q2], MUL_[Q2, Q1]]
 SQUARE = MUL_[Q, Q]
 CUBE = MUL[Q, SQUARE[Q]]
-TESSERACT = MUL_[SQUARE[Q], SQUARE[Q]] | MUL[MUL[SQUARE[Q], Q], Q]
+TESSERACT = t.Union[MUL_[SQUARE[Q], SQUARE[Q]], MUL[MUL[SQUARE[Q], Q], Q]]

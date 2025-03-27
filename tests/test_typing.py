@@ -27,7 +27,7 @@ def test_typevars_at_runtime():
     # many `type: ignore`s here.
     Q = t.TypeVar("Q", bound=u.QUANTITY)
 
-    ZeroOrQuantity = t.Literal[0] | u.Quantity[Q]  # type: ignore
+    ZeroOrQuantity = t.Union[t.Literal[0], u.Quantity[Q]]  # type: ignore
     ZeroOrDuration = ZeroOrQuantity[u.DURATION]  # type: ignore
 
     Speed = u.Quantity[u.DIV[Q, u.DURATION]]  # type: ignore
@@ -81,7 +81,7 @@ def test_static_tests_file():
     # memory. But for some godforsaken reason, that made mypy detect all sorts of nonsensical
     # errors. (I even made sure that the CWD was set to the project directory and that PYTHONPATH
     # was cleared.)
-    validate_typing(file_path.read_text())
+    validate_typing(file_path.read_text(), disabled_error_codes=["no-redef"])
 
 
 def test_readme_code():
@@ -110,11 +110,11 @@ def test_readme_code():
         }
 
         for line_nr, error in lines_with_errors.items():
-            assert (
-                line_nr in errors_expected_on_lines
-            ), f"Unexpected type checking error.\nCode:\n{snippet}\nError in line {line_nr}: {error}"
+            assert line_nr in errors_expected_on_lines, (
+                f"Unexpected type checking error.\nCode:\n{snippet}\nError in line {line_nr}: {error}"
+            )
 
         for line_nr in errors_expected_on_lines - lines_with_errors.keys():
-            assert (
-                False
-            ), f"Expected error in line {line_nr}, but there wasn't one.\nCode:\n{snippet}"
+            assert False, (
+                f"Expected error in line {line_nr}, but there wasn't one.\nCode:\n{snippet}"
+            )

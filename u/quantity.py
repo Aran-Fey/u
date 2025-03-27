@@ -5,6 +5,7 @@ import math
 import re
 import types
 import typing as t
+import typing_extensions as te
 
 import u
 
@@ -104,7 +105,7 @@ def get_exponents(quantity_caps: type[QUANTITY]) -> ExponentDict:
     return ExponentDict(exponents)
 
 
-def _add_exponents(quantity, exponents: collections.defaultdict[t.Type[QUANTITY], int]) -> None:
+def _add_exponents(quantity, exponents: collections.defaultdict[type[QUANTITY], int]) -> None:
     # `quantity` can be:
     #
     # 1. A parameterized MUL or DIV
@@ -144,21 +145,67 @@ class NotFullyParameterized(Exception):
     pass
 
 
+# Regular properties can't be annotated to return Units that match the Quantity (for example, make
+# `Speed.base_unit` return a `Unit[SPEED]`), so we have to use custom descriptors. They're designed
+# to be used as decorators because that way the IDE preserves the docstring.
+class UnitProperty:
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance: type[Quantity[Q_co]], owner: t.Any = None) -> u.Unit[Q_co]:
+        return self.func(instance)
+
+
+class UnitSequenceProperty:
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(
+        self, instance: type[Quantity[Q_co]], owner: t.Any = None
+    ) -> t.Sequence[u.Unit[Q_co]]:
+        return self.func(instance)
+
+
 class QuantityMeta(type(t.Generic)):
     @property
     def exponents(cls) -> ExponentDict:
+        """
+        When used on a compound quantity, this returns a mapping of all the base quantities that
+        make up the compound quantity along with their exponents. For example, `u.Speed.exponents`
+        will return `{u.DISTANCE: 1, u.DURATION: -1}`.
+
+        When used on a base quantity like `Duration`, it will simply return that quantity with an
+        exponent of 1: `{u.DURATION: 1}`.
+        """
+
         raise TypeError(f"Unparameterized {cls} has no exponents")
 
-    @property
-    def units(cls) -> t.Sequence[u.Unit]:
+    @UnitSequenceProperty
+    def units(cls):
+        """
+        A sequence of units associated with this quantity. Only units created by the `Unit`
+        constructor are included, which means that this returns an empty sequence for compound
+        quantities like `Speed` and `Area`. However, if a compound unit has dedicated units, like
+        `Frequency` has `hertz`, then those will be included.
+
+        The units are sorted by their `multiplier`, in ascending order.
+        """
         raise TypeError(f"Unparameterized {cls} has no units")
 
-    @property
-    def base_unit(cls) -> u.Unit:
+    @UnitProperty
+    def base_unit(cls):
+        """
+        Returns the base unit for this quantity, that is, the unit with a `multiplier` of 1.
+        """
         raise TypeError(f"Unparameterized {cls} has no units")
 
     @property
     def prefixes(cls) -> t.Sequence[u.Prefix]:
+        """
+        Returns the prefixes that are conventionally used with this quantity. For most quantities,
+        this is `u.STANDARD_SI_PREFIXES`. There are some exceptions though, for example,
+        `u.Duration` only uses "small" prefixes like `u.milli` and `u.micro`.
+        """
         raise TypeError(f"Unparameterized {cls} has no prefixes")
 
     @prefixes.setter
@@ -211,19 +258,58 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
 
     @property
     def quantity(self) -> type[Quantity[Q_co]]:
+        """
+        Returns the quantity that is being measured. For example `u.minutes(3).quantity` will return
+        `u.Duration`.
+        """
         return self.unit.quantity
 
     def to_number(self, unit: u.Unit[Q_co]) -> float:
+        """
+        Converts this measurement to a number in the given unit. For example:
+
+        ```python
+        >>> u.minutes(1).to_number(u.seconds)
+        60
+        ```
+        """
         return self._value * (self.unit.multiplier / unit.multiplier)
 
     @classmethod
     def parse(cls, text: str, /) -> Quantity[Q_co]:
+        """
+        Parses a string containing a number followed by a unit.
+
+        When this method is used directly on the `Quantity` class, any kind of quantity can be
+        parsed. For example:
+
+        ```python
+        >>> u.Quantity.parse('5min')
+        5 min
+        >>> u.Quantity.parse('5 km')
+        5 km
+        ```
+
+        But when this method is used on a specific quantity, only that quantity can be parsed. For
+        example:
+
+        ```python
+        >>> u.Duration.parse('5min')
+        5 min
+        >>> u.Duration.parse('5 km')
+        ValueError: Cannot parse '5 km' as a Duration
+        ```
+        """
+
         match = NUMBER_WITH_UNIT_REGEX.match(text)
         if not match:
             raise ValueError(f"Cannot parse {text!r} as a Quantity")
 
         number_str, unit_str = match.groups()
+
         number = float(number_str)
+        if number.is_integer():
+            number = int(number)
 
         try:
             unit = u.Unit.parse(unit_str, cls)
@@ -233,11 +319,40 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         return cls(number, unit)
 
     @classmethod
-    def typecheck(cls, other: Quantity, /) -> t.TypeGuard[Quantity[Q_co]]:
-        return cls.exponents == type(other).exponents
+    def typecheck(cls, value: Quantity, /) -> te.TypeGuard[Quantity[Q_co]]:
+        """
+        Checks whether the given measurement is measuring this quantity. It also acts as a
+        `TypeGuard`:
 
-    def is_compatible_with(self, other: Quantity) -> t.TypeGuard[Quantity[Q_co]]:
-        return self.unit.quantity.exponents == other.unit.quantity.exponents
+        ```python
+        def example(value: u.Quantity):
+            if u.Distance.typecheck(value):
+                print("It's a distance!")
+
+                distance: u.Distance = value  # Ok, type checker doesn't complain
+            else:
+                print("It's not a distance.")
+        """
+
+        return cls.exponents == type(value).exponents
+
+    def is_compatible_with(self, other: Quantity) -> te.TypeGuard[Quantity[Q_co]]:
+        """
+        Checks whether two values are measuring the same quantity. It also acts as a
+        `TypeGuard`:
+
+        ```python
+        def example(value1: u.Quantity, value2: u.Quantity):
+            if value1.is_compatible_with(value2):
+                print(
+                    "Now the type checker understands that these two values"
+                    " have the same type, allowing us to do things like this:"
+                )
+
+                print(value1.to_number(value2.unit))
+        ```
+        """
+        return self.quantity == other.quantity
 
     def __bool__(self) -> bool:
         return bool(self._value)
@@ -396,7 +511,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
     def __str__(self) -> str:
         value, unit = self._find_unit_for_str()
 
-        if value.is_integer():
+        if isinstance(value, int) or value.is_integer():
             value_str = str(int(value))
         else:
             value_str = format(value, ".1f")

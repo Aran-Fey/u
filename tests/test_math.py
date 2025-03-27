@@ -66,7 +66,7 @@ def test_getitem():
     ],
 )
 def test_quantity_exponents_after_unit_math(
-    unit: u.Unit, expected_exponents: dict[t.Type[u.QUANTITY], int]
+    unit: u.Unit, expected_exponents: dict[type[u.QUANTITY], int]
 ):
     assert dict(unit.quantity.exponents) == expected_exponents
 
@@ -80,5 +80,5 @@ def test_quantity_exponents_after_unit_math(
         (u.kg / u.second * u.m / u.second, u.Force),
     ],
 )
-def test_quantity_equality_after_unit_math(unit: u.Unit, expected_quantity: t.Type[u.Quantity]):
+def test_quantity_equality_after_unit_math(unit: u.Unit, expected_quantity: type[u.Quantity]):
     assert unit.quantity == expected_quantity
