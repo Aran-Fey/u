@@ -71,6 +71,28 @@ def test_str(value: u.Quantity, expected_result: t.Union[str, t.Sequence[str]]):
 
 
 @pytest.mark.parametrize(
+    "value, format_, expected_result",
+    [
+        (u.kilometers(0), "", "0 m"),
+        (u.kilometers(0), "dm", "0 dm"),
+        (u.kilometers(5), "m", "5000 m"),
+        (u.kilometers(1.234), "+.2f km", "+1.23 km"),
+        (u.kilometers(1), "m:dam", "100 dam"),
+        (u.meters(1), "dam:km", "0.1 dam"),
+        (u.meters(1), "0.2f dam:km", "0.10 dam"),
+    ],
+    ids=lambda value: repr(value),
+)
+def test_format(value: u.Quantity, format_: str, expected_result: t.Union[str, t.Sequence[str]]):
+    result = format(value, format_)
+
+    if isinstance(expected_result, str):
+        assert result == expected_result
+    else:
+        assert result in expected_result
+
+
+@pytest.mark.parametrize(
     "text, quantity, expected_result",
     [
         ("7m", u.Distance, u.m(7)),

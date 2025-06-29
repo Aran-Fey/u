@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import bisect
+
+# import functools
 import sys
 import typing as t
 import typing_extensions as te
@@ -11,6 +13,7 @@ import u
 from ._utils import cached, join_symbols, parse_symbol
 from .quantity import Quantity
 from .capital_quantities import QUANTITY, DIV, MUL, Q2
+from . import prefixes
 
 
 __all__ = ["Unit"]
@@ -22,6 +25,7 @@ Q_co = t.TypeVar("Q_co", bound=QUANTITY, covariant=True)
 units_by_symbol: t.MutableMapping[str, Unit] = weakref.WeakValueDictionary()
 
 
+# @functools.total_ordering
 class Unit(t.Generic[Q_co]):
     """
     Represents a unit of measurement for a certain `Quantity`.
@@ -96,20 +100,25 @@ class Unit(t.Generic[Q_co]):
             pass
 
         # Check if it starts with a prefix
-        if len(symbol) > 1:
-            prefix_symbol = symbol[0]
+        prefix_length = min(1 + prefixes.max_prefix_length, len(symbol) - 1)
+
+        while prefix_length > 0:
+            prefix_symbol = symbol[:prefix_length]
+
             try:
                 prefix = u.Prefix.from_symbol(prefix_symbol)
             except ValueError:
                 pass
             else:
-                symbol = symbol[1:]
+                unit_symbol = symbol[prefix_length:]
                 try:
-                    unit = units_by_symbol[symbol]
+                    unit = units_by_symbol[unit_symbol]
                 except KeyError:
                     pass
                 else:
                     return prefix(unit)
+
+            prefix_length -= 1
 
         raise ValueError(f"The symbol {symbol!r} doesn't correspond to a known Unit")
 
@@ -256,6 +265,21 @@ class Unit(t.Generic[Q_co]):
             return Quantity(value.to_number(self), self)
         else:
             return Quantity(value, self)
+
+    # def __eq__(self, other: object) -> bool:
+    #     if not isinstance(other, __class__):
+    #         return NotImplemented
+
+    #     return self.quantity == other.quantity and self.multiplier == other.multiplier
+
+    # def __le__(self, other: object) -> bool:
+    #     if not isinstance(other, __class__):
+    #         return NotImplemented
+
+    #     if self.quantity != other.quantity:
+    #         return False
+
+    #     return self.multiplier < other.multiplier
 
     def __repr__(self) -> str:
         return f"Unit({self.quantity!r}, {self.symbol!r}, {self.multiplier!r})"

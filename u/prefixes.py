@@ -44,6 +44,7 @@ Q = t.TypeVar("Q", bound="u.QUANTITY")
 
 
 prefix_by_symbol = dict[str, "Prefix"]()
+max_prefix_length = 0
 
 
 class Prefix:
@@ -52,6 +53,9 @@ class Prefix:
         self.multiplier = multiplier
 
         prefix_by_symbol[symbol] = self
+
+        global max_prefix_length
+        max_prefix_length = max(max_prefix_length, len(symbol))
 
     @classmethod
     def from_symbol(cls, symbol: str) -> Prefix:

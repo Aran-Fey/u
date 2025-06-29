@@ -54,6 +54,16 @@ yum = u.Unit(Tastiness, 'yum', 10)
 taste: Tastiness = yum(42)
 ```
 
+Convert to string:
+
+```python
+thousand_meters = u.meters(1000)
+print(thousand_meters)             # Automatically selects a suitable unit: "1 km"
+print(f'{thousand_meters:m}')      # Uses the specified unit: "1000 m"
+print(f'{thousand_meters:cm:m}')   # Selects a unit from the given range: "1000 m"
+print(f'{thousand_meters:.1f m}')  # Formats the number: "1000.0 m"
+```
+
 ## Caveats
 
 Since type checkers don't understand math, calculations involving different types of quantities
@@ -62,3 +72,8 @@ sometimes cause type checkers to complain even though they're correct. For examp
 ```python
 area: u.Area = (u.m2 * u.kelvins / u.kelvins)(1)  # Type checking error
 ```
+
+## Documentation
+
+There is no online documentation, but everything has docstrings and type annotations. Your IDE
+should be able to show you all the relevant information.

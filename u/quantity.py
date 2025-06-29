@@ -24,6 +24,10 @@ Q2 = t.TypeVar("Q2", bound=QUANTITY)
 
 NUMBER_WITH_UNIT_REGEX = re.compile(r"([+-]?[0-9._]+)(.*)")
 
+# We support a subset of python's usual formatting spec. Reference:
+# https://docs.python.org/3/library/string.html#formatspec
+NUMBER_FORMAT_SPEC_REGEX = re.compile(r"([ +-]?z?#?0?\d*[._]?(?:\.\d+)?.?) (.*)")
+
 
 QUANTITY_ALIASES_BY_EXPONENTS = dict[FrozenExponents, "QuantityAlias"]()
 
@@ -505,18 +509,43 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
                 u.one / self.unit,
             )
 
+    def __format__(self, format_: str) -> str:
+        if not format_:
+            return str(self)
+
+        match = NUMBER_FORMAT_SPEC_REGEX.match(format_)
+        if match:
+            number_format, format_ = match.groups()
+        else:
+            number_format = None
+
+        if ":" in format_:
+            min_unit_symbol, max_unit_symbol = format_.split(":", 1)
+            min_unit = u.Unit.parse(min_unit_symbol, quantity=self.quantity)
+            max_unit = u.Unit.parse(max_unit_symbol, quantity=self.quantity)
+
+            _, unit = self._find_unit_for_str()
+
+            if unit.multiplier < min_unit.multiplier:
+                unit = min_unit
+            elif unit.multiplier > max_unit.multiplier:
+                unit = max_unit
+        else:
+            unit = u.Unit.parse(format_, quantity=self.quantity)
+
+        value = self.to_number(unit)
+
+        if number_format is not None:
+            value = format(value, number_format)
+
+        return _quantity_to_string(value, unit)
+
     def __repr__(self) -> str:
         return f"{self._value} {self.unit.symbol}"
 
     def __str__(self) -> str:
         value, unit = self._find_unit_for_str()
-
-        if isinstance(value, int) or value.is_integer():
-            value_str = str(int(value))
-        else:
-            value_str = format(value, ".1f")
-
-        return f"{value_str} {unit.symbol}"
+        return _quantity_to_string(value, unit)
 
     def _find_unit_for_str(self) -> tuple[float, u.Unit[Q_co]]:
         value = self._value * self.unit.multiplier
@@ -624,3 +653,14 @@ def _find_most_suitable_multiplier(value: float, things: t.Iterable[T], exponent
         return max(candidates, key=lambda thing: thing.multiplier)
     else:
         return min(things, key=lambda thing: thing.multiplier)
+
+
+def _quantity_to_string(value: float | str, unit: u.Unit) -> str:
+    if isinstance(value, str):
+        value_str = value
+    elif isinstance(value, int) or value.is_integer():
+        value_str = str(int(value))
+    else:
+        value_str = format(value, ".1f")
+
+    return f"{value_str} {unit.symbol}"
