@@ -2,11 +2,8 @@ from __future__ import annotations
 
 import bisect
 
-# import functools
-import sys
-import typing as t
-import typing_extensions as te
-import weakref
+import functools
+import typing_extensions as t
 
 import u
 
@@ -21,11 +18,13 @@ __all__ = ["Unit"]
 
 Q_co = t.TypeVar("Q_co", bound=QUANTITY, covariant=True)
 
+UnitId = tuple[type[Quantity], float]
 
-units_by_symbol: t.MutableMapping[str, Unit] = weakref.WeakValueDictionary()
+units_cache: t.MutableMapping[UnitId, Unit] = {}
+units_by_symbol: t.MutableMapping[str, Unit] = {}
 
 
-# @functools.total_ordering
+@functools.total_ordering
 class Unit(t.Generic[Q_co]):
     """
     Represents a unit of measurement for a certain `Quantity`.
@@ -69,8 +68,6 @@ class Unit(t.Generic[Q_co]):
         symbol: str,
         multiplier: float | None = None,
     ):
-        self.symbol = symbol
-
         if isinstance(quantity, Unit):
             self.quantity = quantity.quantity
             self.multiplier = quantity.multiplier
@@ -80,17 +77,29 @@ class Unit(t.Generic[Q_co]):
             assert isinstance(multiplier, (int, float))
             self.multiplier = multiplier
 
-        if not isinstance(self, UnregisteredUnit):
-            units_by_symbol[symbol] = self
+        self.symbol = symbol
 
-            # Register this unit with the Quantity
-            units = t.cast(list[Unit[Q_co]], self.quantity.units)
+        unit_id = (self.quantity, self.multiplier)
 
-            if sys.version_info >= (3, 10):
-                bisect.insort(units, self, key=lambda unit: unit.multiplier)
-            else:
-                units.append(self)
-                units.sort(key=lambda unit: unit.multiplier)
+        # If an `UnregisteredUnit` already existed, update its symbol. This is important because
+        # that unit may exist in any number of our `@cached` functions. (For example, `1/s` is
+        # created before `hertz`, and is permanently cached by `Unit.__truediv__`.)
+        try:
+            units_cache[unit_id].symbol = symbol
+        except KeyError:
+            pass
+
+        units_cache[unit_id] = self
+
+        if isinstance(self, UnregisteredUnit):
+            return
+
+        units_by_symbol[symbol] = self
+
+        # Register this unit with the Quantity
+        units = t.cast(list[Unit[Q_co]], self.quantity.units)
+
+        bisect.insort(units, self, key=lambda unit: unit.multiplier)
 
     @staticmethod
     def _from_symbol(symbol: str) -> Unit:
@@ -171,16 +180,16 @@ class Unit(t.Generic[Q_co]):
         raise ValueError(f"{symbol!r} is not a unit of {quantity}")
 
     @t.overload
-    def is_compatible_with(self, unit: Unit, /) -> te.TypeGuard[Unit[Q_co]]: ...
+    def is_compatible_with(self, unit: Unit, /) -> t.TypeGuard[Unit[Q_co]]: ...
 
     @t.overload
-    def is_compatible_with(self, quantity: type[Quantity[Q2]], /) -> te.TypeGuard[Unit[Q2]]: ...
+    def is_compatible_with(self, quantity: type[Quantity[Q2]], /) -> t.TypeGuard[Unit[Q2]]: ...
 
     def is_compatible_with(
         self,
         other: t.Union[Unit[Q2], type[Quantity[Q2]]],
         /,
-    ) -> te.TypeGuard[Unit[Q2]]:
+    ) -> t.TypeGuard[Unit[Q2]]:
         if isinstance(other, Unit):
             return self.quantity.exponents == other.quantity.exponents
         else:
@@ -193,7 +202,7 @@ class Unit(t.Generic[Q_co]):
     def __pow__(self, exponent: t.Literal[0], /) -> Unit[u.ONE]: ...
 
     @t.overload
-    def __pow__(self, exponent: t.Literal[1], /) -> te.Self: ...
+    def __pow__(self, exponent: t.Literal[1], /) -> t.Self: ...
 
     @t.overload
     def __pow__(self, exponent: t.Literal[2], /) -> Unit[MUL[Q_co, Q_co]]: ...
@@ -222,7 +231,7 @@ class Unit(t.Generic[Q_co]):
 
     @cached
     def __mul__(self, other: Unit[Q2], /) -> Unit[MUL[Q_co, Q2]]:
-        return UnregisteredUnit(
+        return lookup_unit(
             join_quantities(self.quantity, other.quantity, MUL),
             join_symbols(self.symbol, other.symbol, "*"),
             self.multiplier * other.multiplier,
@@ -230,26 +239,29 @@ class Unit(t.Generic[Q_co]):
 
     @cached
     def __truediv__(self, other: Unit[Q2], /) -> Unit[DIV[Q_co, Q2]]:
-        quantity = t.get_args(self.quantity)[0]
-        try:
-            quantity_name = quantity.__name__
-        except AttributeError:
-            # Bleh, old `typing` module
-            quantity_name = quantity._name
+        def make_symbol():
+            quantity = t.get_args(self.quantity)[0]
+            try:
+                quantity_name = quantity.__name__
+            except AttributeError:
+                # Bleh, old `typing` module
+                quantity_name = quantity._name
 
-        if quantity_name == "ONE" and "*" not in other.symbol and "/" not in other.symbol:
-            if "*" in other.symbol or "/" in other.symbol:
-                symbol = f"({other.symbol})⁻¹"
+            if quantity_name == "ONE" and "*" not in other.symbol and "/" not in other.symbol:
+                if "*" in other.symbol or "/" in other.symbol:
+                    symbol = f"({other.symbol})⁻¹"
+                else:
+                    symbol = other.symbol + "⁻¹"
+            elif "*" in other.symbol or "(" in other.symbol:
+                symbol = join_symbols(self.symbol, other.symbol, "/(") + ")"
             else:
-                symbol = other.symbol + "⁻¹"
-        elif "*" in other.symbol or "(" in other.symbol:
-            symbol = join_symbols(self.symbol, other.symbol, "/(") + ")"
-        else:
-            symbol = join_symbols(self.symbol, other.symbol, "/")
+                symbol = join_symbols(self.symbol, other.symbol, "/")
 
-        return UnregisteredUnit(
+            return symbol
+
+        return lookup_unit(
             join_quantities(self.quantity, other.quantity, DIV),
-            symbol,
+            make_symbol,
             self.multiplier / other.multiplier,
         )
 
@@ -257,7 +269,9 @@ class Unit(t.Generic[Q_co]):
         return Quantity(value, self)
 
     def __rtruediv__(self, value: t.Literal[1], /) -> Unit[DIV[u.ONE, Q_co]]:
-        assert value == 1
+        if value != 1:
+            raise ValueError("Division by a number other than 1 is not supported")
+
         return u.one / self
 
     def __call__(self, value: float | Quantity[Q_co], /) -> Quantity[Q_co]:
@@ -266,20 +280,23 @@ class Unit(t.Generic[Q_co]):
         else:
             return Quantity(value, self)
 
-    # def __eq__(self, other: object) -> bool:
-    #     if not isinstance(other, __class__):
-    #         return NotImplemented
+    def __hash__(self) -> int:
+        return hash((self.quantity, self.multiplier))
 
-    #     return self.quantity == other.quantity and self.multiplier == other.multiplier
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, __class__):
+            return NotImplemented
 
-    # def __le__(self, other: object) -> bool:
-    #     if not isinstance(other, __class__):
-    #         return NotImplemented
+        return self.quantity == other.quantity and self.multiplier == other.multiplier
 
-    #     if self.quantity != other.quantity:
-    #         return False
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, __class__):
+            return NotImplemented
 
-    #     return self.multiplier < other.multiplier
+        if self.quantity != other.quantity:
+            return False
+
+        return self.multiplier < other.multiplier
 
     def __repr__(self) -> str:
         return f"Unit({self.quantity!r}, {self.symbol!r}, {self.multiplier!r})"
@@ -291,7 +308,28 @@ class Unit(t.Generic[Q_co]):
 class UnregisteredUnit(Unit):
     """
     Instances of this class won't have their `symbol` registered in the global lookup table.
+
+    Do not instantiate this class directly. Instead, use the `lookup_unit` function. This will
+    "normalize" the unit, such that `1/second` becomes `hertz`, for example.
     """
+
+
+def lookup_unit(
+    quantity: type[Quantity],
+    symbol: str | t.Callable[[], str],
+    multiplier: float,
+) -> Unit:
+    unit_id: UnitId = (quantity, multiplier)
+
+    try:
+        return units_cache[unit_id]
+    except KeyError:
+        pass
+
+    if not isinstance(symbol, str):
+        symbol = symbol()
+
+    return UnregisteredUnit(quantity, symbol, multiplier)
 
 
 def join_quantities(q1: type[Quantity], q2: type[Quantity], joiner) -> type[Quantity]:

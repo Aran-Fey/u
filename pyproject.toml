@@ -2,9 +2,10 @@
 name = "u"
 description = "Statically typed units"
 authors = [{ name = "Aran-Fey", email = "rawing7@gmail.com" }]
+license = { file = "LICENSE.txt" }
 readme = "README.md"
 dynamic = ["version"]
-requires-python = ">= 3.9.2"
+requires-python = ">= 3.10"
 dependencies = ["typing-extensions"]
 
 [build-system]

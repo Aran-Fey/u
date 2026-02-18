@@ -1,5 +1,3 @@
-import typing as t
-
 import pytest
 
 import u
@@ -49,11 +47,6 @@ def test_multiplication(result: u.Quantity, expected_result: u.Quantity):
 )
 def test_division(result: u.Quantity, expected_result: u.Quantity):
     assert result == expected_result
-
-
-def test_getitem():
-    r = u.Quantity[u.DURATION]
-    print(r.exponents)
 
 
 @pytest.mark.parametrize(

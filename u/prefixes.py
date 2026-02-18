@@ -69,7 +69,7 @@ class Prefix:
         if isinstance(unit, u.unit.UnregisteredUnit):
             raise ValueError("Prefixes cannot be applied to compound units") from None
 
-        return u.unit.UnregisteredUnit(
+        return u.unit.lookup_unit(
             unit.quantity,
             self.symbol + unit.symbol,
             self.multiplier * unit.multiplier,

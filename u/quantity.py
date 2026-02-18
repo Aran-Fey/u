@@ -4,8 +4,7 @@ import collections
 import math
 import re
 import types
-import typing as t
-import typing_extensions as te
+import typing_extensions as t
 
 import u
 
@@ -258,7 +257,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             raise TypeError("Creating an unparameterized `Quantity` requires a `unit`.")
 
         self._value = value
-        self.unit = unit
+        self._unit = unit
 
     @property
     def quantity(self) -> type[Quantity[Q_co]]:
@@ -266,7 +265,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         Returns the quantity that is being measured. For example `u.minutes(3).quantity` will return
         `u.Duration`.
         """
-        return self.unit.quantity
+        return self._unit.quantity
 
     def to_number(self, unit: u.Unit[Q_co]) -> float:
         """
@@ -277,7 +276,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         60
         ```
         """
-        return self._value * (self.unit.multiplier / unit.multiplier)
+        return self._value * (self._unit.multiplier / unit.multiplier)
 
     @classmethod
     def parse(cls, text: str, /) -> Quantity[Q_co]:
@@ -323,7 +322,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         return cls(number, unit)
 
     @classmethod
-    def typecheck(cls, value: Quantity, /) -> te.TypeGuard[Quantity[Q_co]]:
+    def typecheck(cls, value: Quantity, /) -> t.TypeGuard[Quantity[Q_co]]:
         """
         Checks whether the given measurement is measuring this quantity. It also acts as a
         `TypeGuard`:
@@ -340,7 +339,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
 
         return cls.exponents == type(value).exponents
 
-    def is_compatible_with(self, other: Quantity) -> te.TypeGuard[Quantity[Q_co]]:
+    def is_compatible_with(self, other: Quantity) -> t.TypeGuard[Quantity[Q_co]]:
         """
         Checks whether two values are measuring the same quantity. It also acts as a
         `TypeGuard`:
@@ -362,77 +361,77 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         return bool(self._value)
 
     def __float__(self) -> float:
-        return float(self._value * self.unit.multiplier)
+        return float(self._value * self._unit.multiplier)
 
     def __neg__(self) -> Quantity[Q_co]:
-        return Quantity(-self._value, self.unit)
+        return Quantity(-self._value, self._unit)
 
     def __eq__(self, quantity: object, /) -> bool:
         if quantity == 0:
-            num = self._value * self.unit.multiplier
+            num = self._value * self._unit.multiplier
             expected = 0
         elif not isinstance(quantity, __class__):
             return NotImplemented
         elif not self.is_compatible_with(quantity):
             return False
         else:
-            num = self.to_number(quantity.unit)
+            num = self.to_number(quantity._unit)
             expected = quantity._value
 
         return math.isclose(num, expected)
 
     def __lt__(self, quantity: NullableQuantity[Q_co], /) -> bool:
         if quantity == 0:
-            num = self._value * self.unit.multiplier
+            num = self._value * self._unit.multiplier
             expected = 0
         elif not isinstance(quantity, __class__):
             return NotImplemented
         elif not self.is_compatible_with(quantity):
             return False
         else:
-            num = self.to_number(quantity.unit)
+            num = self.to_number(quantity._unit)
             expected = quantity._value
 
         return num < expected and not math.isclose(num, expected)
 
     def __le__(self, quantity: object, /) -> bool:
         if quantity == 0:
-            num = self._value * self.unit.multiplier
+            num = self._value * self._unit.multiplier
             expected = 0
         elif not isinstance(quantity, __class__):
             return NotImplemented
         elif not self.is_compatible_with(quantity):
             return False
         else:
-            num = self.to_number(quantity.unit)
+            num = self.to_number(quantity._unit)
             expected = quantity._value
 
         return num < expected or math.isclose(num, expected)
 
     def __gt__(self, quantity: object, /) -> bool:
         if quantity == 0:
-            num = self._value * self.unit.multiplier
+            num = self._value * self._unit.multiplier
             expected = 0
         elif not isinstance(quantity, __class__):
             return NotImplemented
         elif not self.is_compatible_with(quantity):
             return False
         else:
-            num = self.to_number(quantity.unit)
+            num = self.to_number(quantity._unit)
             expected = quantity._value
 
         return num > expected and not math.isclose(num, expected)
 
     def __ge__(self, quantity: object, /) -> bool:
         if quantity == 0:
-            num = self._value * self.unit.multiplier
+            num = self._value * self._unit.multiplier
             expected = 0
         elif not isinstance(quantity, __class__):
             return NotImplemented
         elif not self.is_compatible_with(quantity):
             return False
         else:
-            num = self.to_number(quantity.unit)
+            num = self.to_number(quantity._unit)
             expected = quantity._value
 
         return num > expected or math.isclose(num, expected)
@@ -442,8 +441,8 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             return self
 
         return Quantity(
-            self._value + quantity.to_number(self.unit),
-            self.unit,
+            self._value + quantity.to_number(self._unit),
+            self._unit,
         )
 
     __radd__ = __add__
@@ -453,13 +452,13 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             return self
 
         return Quantity(
-            self._value - quantity.to_number(self.unit),
-            self.unit,
+            self._value - quantity.to_number(self._unit),
+            self._unit,
         )
 
     def __rsub__(self, zero: t.Literal[0], /) -> Quantity[Q_co]:
         assert zero == 0
-        return Quantity(-self._value, self.unit)
+        return Quantity(-self._value, self._unit)
 
     @t.overload
     def __mul__(self, number: float, /) -> Quantity[Q_co]: ...
@@ -471,10 +470,10 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         if isinstance(other, Quantity):
             return Quantity(
                 self._value * other._value,
-                self.unit * other.unit,
+                self._unit * other._unit,
             )
         else:
-            return Quantity(self._value * other, self.unit)
+            return Quantity(self._value * other, self._unit)
 
     @t.overload
     def __truediv__(self, number: float, /) -> Quantity[Q_co]: ...
@@ -486,10 +485,10 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         if isinstance(other, Quantity):
             return Quantity(
                 self._value / other._value,
-                self.unit / other.unit,
+                self._unit / other._unit,
             )
         else:
-            return Quantity(self._value / other, self.unit)
+            return Quantity(self._value / other, self._unit)
 
     @t.overload
     def __rtruediv__(self, number: float, /) -> Quantity[DIV[u.ONE, Q_co]]: ...
@@ -501,12 +500,12 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         if isinstance(other, Quantity):
             return Quantity(
                 other._value / self._value,
-                other.unit / self.unit,
+                other._unit / self._unit,
             )
         else:
             return Quantity(
                 other / self._value,
-                u.one / self.unit,
+                u.one / self._unit,
             )
 
     def __format__(self, format_: str) -> str:
@@ -541,27 +540,27 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         return _quantity_to_string(value, unit)
 
     def __repr__(self) -> str:
-        return f"{self._value} {self.unit.symbol}"
+        return f"{self._value} {self._unit.symbol}"
 
     def __str__(self) -> str:
         value, unit = self._find_unit_for_str()
         return _quantity_to_string(value, unit)
 
     def _find_unit_for_str(self) -> tuple[float, u.Unit[Q_co]]:
-        value = self._value * self.unit.multiplier
+        value = self._value * self._unit.multiplier
 
         # Special case: If the value is 0, use the base unit
         if math.isclose(value, 0):
-            return 0, self.unit.quantity.base_unit
+            return 0, self._unit.quantity.base_unit
 
         # We want to find a suitable (i.e. human-readable) representation of this quantity, which
         # means we want to output a "short" number (with few digits). This is a non-trivial problem.
         # We won't bother looking for a better representation if the current unit works well enough.
         digits, _, decimal_digits = str(self._value).partition(".")
         if len(digits.lstrip("-")) < 4 and len(decimal_digits) < 4:
-            return self._value, self.unit
+            return self._value, self._unit
 
-        return _find_most_suitable_unit(value, self.unit.quantity)
+        return _find_most_suitable_unit(value, self._unit.quantity)
 
 
 NullableQuantity = t.Union[Quantity[Q2], t.Literal[0]]
@@ -647,6 +646,7 @@ T = t.TypeVar("T", "u.Unit", "u.Prefix")
 
 
 def _find_most_suitable_multiplier(value: float, things: t.Iterable[T], exponent: int = 1) -> T:
+    value = abs(value)
     candidates = [thing for thing in things if thing.multiplier**exponent <= value]
 
     if candidates:
