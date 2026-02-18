@@ -15,7 +15,7 @@ __all__ = [
     "decigrams", "decigram", "dg",
     "grams", "gram", "g",
     "kilograms", "kilogram", "kg",
-    "tons", "ton", "t",
+    "metric_tons", "metric_ton", "tonnes", "tonne", "t", "tons", "ton",
     "kilotons", "kiloton", "kt",
     "megatons", "megaton", "Mt",
 ]
@@ -30,7 +30,10 @@ Mass = Quantity[MASS]
 
 
 grams = gram = g = Unit(Mass, "g", 1)
-tons = ton = t = Unit(Mass, "t", 1_000_000)
+
+# Careful: "ton" is not the same thing as "tonne".
+metric_tons = metric_ton = tonnes = tonne = t = Unit(Mass, "t", 1_000_000)
+tons = ton = t  # For backwards compat. Delete eventually.
 
 nanograms = nanogram = ng = nano(grams)
 micrograms = microgram = μg = micro(grams)
