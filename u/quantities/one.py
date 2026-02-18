@@ -7,8 +7,8 @@ __all__ = ["ONE", "One", "ones", "one"]
 
 class ONE(QUANTITY):
     """
-    Represents the absence of a quantity. Used to create "inverted" quantities like `FREQUENCY =
-    DIV[ONE, DURATION]`.
+    Represents the absence of a quantity. Its primary use is the creation of "inverted" quantities
+    like `FREQUENCY = DIV[ONE, DURATION]`, but it can also be used like any other quantity.
     """
 
 

@@ -15,9 +15,9 @@ __all__ = [
     "decigrams", "decigram", "dg",
     "grams", "gram", "g",
     "kilograms", "kilogram", "kg",
-    "metric_tons", "metric_ton", "tonnes", "tonne", "t", "tons", "ton",
-    "kilotons", "kiloton", "kt",
-    "megatons", "megaton", "Mt",
+    "metric_tons", "metric_ton", "tonnes", "tonne", "t",
+    "kilotonnes", "kilotonne", "kt",
+    "megatonnes", "megatonne", "Mt",
 ]
 # fmt: on
 
@@ -33,7 +33,6 @@ grams = gram = g = Unit(Mass, "g", 1)
 
 # Careful: "ton" is not the same thing as "tonne".
 metric_tons = metric_ton = tonnes = tonne = t = Unit(Mass, "t", 1_000_000)
-tons = ton = t  # For backwards compat. Delete eventually.
 
 nanograms = nanogram = ng = nano(grams)
 micrograms = microgram = μg = micro(grams)
@@ -42,5 +41,5 @@ centigrams = centigram = cg = centi(grams)
 decigrams = decigram = dg = deci(grams)
 kilograms = kilogram = kg = kilo(grams)
 
-kilotons = kiloton = kt = kilo(tons)
-megatons = megaton = Mt = mega(tons)
+kilotonnes = kilotonne = kt = kilo(tonnes)
+megatonnes = megatonne = Mt = mega(tonnes)
