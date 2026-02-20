@@ -275,7 +275,15 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         >>> u.minutes(1).to_number(u.seconds)
         60
         ```
+
+        Changed in version 2.1: This function now raises a `ValueError` if an incompatible unit is
+        passed.
         """
+        if self.quantity != unit.quantity:
+            raise ValueError(
+                f"Cannot convert {self} (a {self.quantity}) to {unit} (a unit of {unit.quantity})"
+            )
+
         return self._value * (self._unit.multiplier / unit.multiplier)
 
     @classmethod
@@ -345,11 +353,11 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         `TypeGuard`:
 
         ```python
-        def example(value1: u.Quantity, value2: u.Quantity):
+        def example(value1: u.Distance, value2: u.Quantity):
             if value1.is_compatible_with(value2):
                 print(
                     "Now the type checker understands that these two values"
-                    " have the same type, allowing us to do things like this:"
+                    " are both distances, allowing us to do things like this:"
                 )
 
                 print(value1.to_number(value2.unit))

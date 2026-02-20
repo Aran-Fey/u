@@ -26,6 +26,11 @@ def test_to_number(value: u.Quantity, unit: u.Unit, expected_result: float):
     assert result == pytest.approx(expected_result)
 
 
+def test_to_number_error():
+    with pytest.raises(ValueError):
+        u.hours(3).to_number(u.meters)  # type: ignore
+
+
 @pytest.mark.parametrize(
     "value, expected_result",
     [
