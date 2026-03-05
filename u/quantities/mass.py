@@ -18,6 +18,11 @@ __all__ = [
     "metric_tons", "metric_ton", "tonnes", "tonne", "t",
     "kilotonnes", "kilotonne", "kt",
     "megatonnes", "megatonne", "Mt",
+    "pounds", "pound", "lb",
+    "ounces", "ounce", "oz",
+    "stones", "stone", "st",
+    "slugs", "slug",
+    "daltons", "dalton", "Da",
 ]
 # fmt: on
 
@@ -33,6 +38,12 @@ grams = gram = g = Unit(Mass, "g", 1)
 
 # Careful: "ton" is not the same thing as "tonne".
 metric_tons = metric_ton = tonnes = tonne = t = Unit(Mass, "t", 1_000_000)
+
+pounds = pound = lb = Unit(Mass, "lb", 453.59237)
+ounces = ounce = oz = Unit(Mass, "oz", 28.349523125)
+stones = stone = st = Unit(Mass, "st", 6350.29318)
+slugs = slug = Unit(Mass, "slug", 14593.9029)
+daltons = dalton = Da = Unit(Mass, "Da", 1.66053906660e-24)
 
 nanograms = nanogram = ng = nano(grams)
 micrograms = microgram = μg = micro(grams)

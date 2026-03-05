@@ -13,6 +13,8 @@ __all__ = [
     "degrees", "degree", "deg",
     "gradians", "gradian", "gons", "gon",
     "turns", "turn", "tr",
+    "arcminutes", "arcminute", "arcmin",
+    "arcseconds", "arcsecond", "arcsec",
 ]
 # fmt: on
 
@@ -28,3 +30,5 @@ radians = radian = rad = Unit(Angle, "rad", 1)
 degrees = degree = deg = Unit(Angle, "°", 2 * pi / 360)
 gradians = gradian = gons = gon = Unit(Angle, "ᵍ", 2 * pi / 400)
 turns = turn = tr = Unit(Angle, "tr", 2 * pi)
+arcminutes = arcminute = arcmin = Unit(Angle, "′", pi / 10800)
+arcseconds = arcsecond = arcsec = Unit(Angle, "″", pi / 648000)
