@@ -4,6 +4,7 @@
   together, `Quantity`s remain interoperable regardless of whether they were created with a float or
   a Decimal.
 - `Unit.multiplier` is now a Decimal.
+- Add `systems` parameter and attribute to `Unit`
 
 # 2.1
 
