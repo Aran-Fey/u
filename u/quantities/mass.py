@@ -1,3 +1,5 @@
+import decimal
+
 from ..prefixes import nano, micro, milli, centi, deci, kilo, mega
 from ..quantity import Quantity
 from ..capital_quantities import QUANTITY
@@ -34,16 +36,16 @@ class MASS(QUANTITY):
 Mass = Quantity[MASS]
 
 
-grams = gram = g = Unit(Mass, "g", 1)
+grams = gram = g = Unit(Mass, "g", 1, systems={"metric"})
 
 # Careful: "ton" is not the same thing as "tonne".
-metric_tons = metric_ton = tonnes = tonne = t = Unit(Mass, "t", 1_000_000)
+metric_tons = metric_ton = tonnes = tonne = t = Unit(Mass, "t", 1000000, systems={"metric"})
 
-pounds = pound = lb = Unit(Mass, "lb", 453.59237)
-ounces = ounce = oz = Unit(Mass, "oz", 28.349523125)
-stones = stone = st = Unit(Mass, "st", 6350.29318)
-slugs = slug = Unit(Mass, "slug", 14593.9029)
-daltons = dalton = Da = Unit(Mass, "Da", 1.66053906660e-24)
+pounds = pound = lb = Unit(Mass, "lb", decimal.Decimal("453.59237"), systems={"imperial"})
+ounces = ounce = oz = Unit(Mass, "oz", decimal.Decimal("28.349523125"), systems={"imperial"})
+stones = stone = st = Unit(Mass, "st", decimal.Decimal("6350.29318"), systems={"imperial"})
+slugs = slug = Unit(Mass, "slug", decimal.Decimal("14593.9029"), systems={"imperial"})
+daltons = dalton = Da = Unit(Mass, "Da", decimal.Decimal("1.66053906660e-24"))
 
 nanograms = nanogram = ng = nano(grams)
 micrograms = microgram = μg = micro(grams)

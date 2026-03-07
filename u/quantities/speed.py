@@ -24,4 +24,4 @@ meters_per_second = mps = meters / seconds
 kilometers_per_hour = kph = kilometers / hours
 miles_per_hour = mph = miles / hours
 knots = knot = kn = nautical_miles / hours
-mach = Ma = Unit(Speed, "Ma", 343)
+mach = Ma = Unit(Speed, "Ma", 343, systems={"technical"})

@@ -23,4 +23,5 @@ ELECTRIC_RESISTANCE = t.Union[
 
 ElectricResistance = Quantity[ELECTRIC_RESISTANCE]
 
-ohms = ohm = Unit(kg * m**2 / s**3 / A**2, "Ω")
+
+ohms = ohm = Unit(kg * m**2 / s**3 / A**2, "Ω", systems={"metric"})

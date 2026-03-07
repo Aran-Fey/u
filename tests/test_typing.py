@@ -1,5 +1,6 @@
 import re
 import typing as t
+import typing_extensions as te
 from pathlib import Path
 
 import mypy.api
@@ -32,6 +33,16 @@ def test_typevars_at_runtime():
 
     Speed = u.Quantity[u.DIV[Q, u.DURATION]]  # type: ignore
     DownloadSpeed = Speed[u.DATA_VOLUME]  # type: ignore
+
+
+def test_typecheck():
+    assert u.Distance.typecheck(u.meters(3))
+    assert not u.Distance.typecheck(u.seconds(3))
+
+
+def test_is_compatible_with():
+    assert u.meters(3).is_compatible_with(u.km(3))
+    assert not u.meters(3).is_compatible_with(u.seconds(3))
 
 
 @pytest.mark.parametrize(

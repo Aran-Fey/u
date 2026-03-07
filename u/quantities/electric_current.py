@@ -19,4 +19,4 @@ class ELECTRIC_CURRENT(QUANTITY):
 ElectricCurrent = Quantity[ELECTRIC_CURRENT]
 
 
-amperes = ampere = A = Unit(ElectricCurrent, "A", 1)
+amperes = ampere = A = Unit(ElectricCurrent, "A", 1, systems={"metric"})

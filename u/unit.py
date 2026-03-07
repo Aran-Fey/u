@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import bisect
-
+import decimal
 import functools
 import typing_extensions as t
 
@@ -10,6 +10,7 @@ import u
 from ._utils import cached, join_symbols, parse_symbol
 from .quantity import Quantity
 from .capital_quantities import QUANTITY, DIV, MUL, Q2
+from .maths import FloatOrDecimal, multiply, divide
 from . import prefixes
 
 
@@ -18,7 +19,7 @@ __all__ = ["Unit"]
 
 Q_co = t.TypeVar("Q_co", bound=QUANTITY, covariant=True)
 
-UnitId = tuple[type[Quantity], float]
+UnitId = tuple[type[Quantity], FloatOrDecimal]
 
 units_cache: t.MutableMapping[UnitId, Unit] = {}
 units_by_symbol: t.MutableMapping[str, Unit] = {}
@@ -42,14 +43,23 @@ class Unit(t.Generic[Q_co]):
     ```
     coulombs = Unit(seconds * amperes, "C")
     ```
+
+    Changed in version 3.0: To maximize precision, the `multiplier` is now always converted to a
+    `decimal.Decimal`.
     """
+
+    quantity: t.Final[type[Quantity[Q_co]]]
+    symbol: t.Final[str]
+    multiplier: t.Final[decimal.Decimal]
+    systems: t.Final[frozenset[str]]
 
     @t.overload
     def __init__(
         self,
         quantity: type[Quantity[Q_co]],
         symbol: str,
-        multiplier: float,
+        multiplier: FloatOrDecimal,
+        systems: t.Iterable[str] | None = None,
     ):
         pass
 
@@ -59,6 +69,7 @@ class Unit(t.Generic[Q_co]):
         unit: Unit[Q_co],
         /,
         symbol: str,
+        systems: t.Iterable[str] = (),
     ):
         pass
 
@@ -66,16 +77,19 @@ class Unit(t.Generic[Q_co]):
         self,
         quantity: type[Quantity[Q_co]] | Unit[Q_co],
         symbol: str,
-        multiplier: float | None = None,
+        multiplier: FloatOrDecimal | None = None,
+        systems: t.Iterable[str] = (),
     ):
         if isinstance(quantity, Unit):
             self.quantity = quantity.quantity
             self.multiplier = quantity.multiplier
+            self.systems = quantity.systems
         else:
             self.quantity = quantity
 
-            assert isinstance(multiplier, (int, float))
-            self.multiplier = multiplier
+            assert isinstance(multiplier, (int, float, decimal.Decimal))
+            self.multiplier = decimal.Decimal(multiplier)
+            self.systems = frozenset(systems)
 
         self.symbol = symbol
 
@@ -234,7 +248,8 @@ class Unit(t.Generic[Q_co]):
         return lookup_unit(
             join_quantities(self.quantity, other.quantity, MUL),
             join_symbols(self.symbol, other.symbol, "*"),
-            self.multiplier * other.multiplier,
+            multiply(self.multiplier, other.multiplier, decimal.Decimal),
+            combine_systems(self.systems, other.systems),
         )
 
     @cached
@@ -262,10 +277,11 @@ class Unit(t.Generic[Q_co]):
         return lookup_unit(
             join_quantities(self.quantity, other.quantity, DIV),
             make_symbol,
-            self.multiplier / other.multiplier,
+            divide(self.multiplier, other.multiplier, decimal.Decimal),
+            combine_systems(self.systems, other.systems),
         )
 
-    def __rmul__(self, value: float, /) -> Quantity[Q_co]:
+    def __rmul__(self, value: FloatOrDecimal, /) -> Quantity[Q_co]:
         return Quantity(value, self)
 
     def __rtruediv__(self, value: t.Literal[1], /) -> Unit[DIV[u.ONE, Q_co]]:
@@ -274,7 +290,7 @@ class Unit(t.Generic[Q_co]):
 
         return u.one / self
 
-    def __call__(self, value: float | Quantity[Q_co], /) -> Quantity[Q_co]:
+    def __call__(self, value: FloatOrDecimal | Quantity[Q_co], /) -> Quantity[Q_co]:
         if isinstance(value, Quantity):
             return Quantity(value.to_number(self), self)
         else:
@@ -317,7 +333,8 @@ class UnregisteredUnit(Unit):
 def lookup_unit(
     quantity: type[Quantity],
     symbol: str | t.Callable[[], str],
-    multiplier: float,
+    multiplier: FloatOrDecimal,
+    systems: t.Iterable[str] | None = None,
 ) -> Unit:
     unit_id: UnitId = (quantity, multiplier)
 
@@ -329,7 +346,23 @@ def lookup_unit(
     if not isinstance(symbol, str):
         symbol = symbol()
 
-    return UnregisteredUnit(quantity, symbol, multiplier)
+    return UnregisteredUnit(quantity, symbol, multiplier, systems)
+
+
+def combine_systems(s1: t.Iterable[str], s2: t.Iterable[str]) -> frozenset[str]:
+    s1 = frozenset(s1)
+    s2 = frozenset(s2)
+
+    if not s1:
+        return s2
+    if not s2:
+        return s1
+
+    intersection = s1 & s2
+    if intersection:
+        return intersection
+
+    return s1 | s2
 
 
 def join_quantities(q1: type[Quantity], q2: type[Quantity], joiner) -> type[Quantity]:

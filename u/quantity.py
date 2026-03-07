@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import decimal
 import math
 import re
 import types
@@ -10,6 +11,7 @@ import u
 
 from ._utils import UNION_TYPES, ExponentDict, str_exponent
 from .capital_quantities import QUANTITY, DIV, MUL, MUL_
+from .maths import FloatOrDecimal, TypePreference, add, subtract, multiply, divide
 
 
 __all__ = ["Quantity", "NullableQuantity"]
@@ -19,6 +21,8 @@ FrozenExponents = frozenset[tuple[type[QUANTITY], int]]
 
 Q_co = t.TypeVar("Q_co", bound=QUANTITY, covariant=True)
 Q2 = t.TypeVar("Q2", bound=QUANTITY)
+
+V = t.TypeVar("V", float, decimal.Decimal)
 
 
 NUMBER_WITH_UNIT_REGEX = re.compile(r"([+-]?[0-9._]+)(.*)")
@@ -69,6 +73,9 @@ class QuantityAlias(types.GenericAlias):
 
     def parse(self, *args, **kwargs):
         return Quantity.parse.__func__(self, *args, **kwargs)  # type: ignore
+
+    def typecheck(self, value: Quantity, /) -> bool:
+        return value.quantity == self
 
     def __call__(self, value: float, unit: u.Unit[Q_co] | None = None):
         if unit is None:
@@ -217,6 +224,16 @@ class QuantityMeta(type(t.Generic)):
 
 
 class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
+    """
+    Represents a concrete quantity, like "3 meters" or "15 seconds". Quantities are created by
+    calling a unit, for example:
+
+    ```python
+    >>> u.meters(3)
+    3 m
+    ```
+    """
+
     @classmethod  # This is only here to shut up the type checker
     def __class_getitem(cls, quantity_caps) -> QuantityAlias:
         # Make sure that all equivalent quantities return the same QuantityAlias
@@ -247,9 +264,9 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
     def __init__(self, value: t.Literal[0]): ...
 
     @t.overload
-    def __init__(self, value: float, unit: u.Unit[Q_co]): ...
+    def __init__(self, value: float | decimal.Decimal, unit: u.Unit[Q_co]): ...
 
-    def __init__(self, value: float, unit: u.Unit[Q_co] | None = None):
+    def __init__(self, value: FloatOrDecimal, unit: u.Unit[Q_co] | None = None):
         # We actually can't implement the case with the optional unit here because `self` is a
         # `Quantity` instance and not a `QuantityAlias`. So `QuantityAlias.__call__` is responsible
         # for giving us a unit.
@@ -278,13 +295,40 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
 
         Changed in version 2.1: This function now raises a `ValueError` if an incompatible unit is
         passed.
+
+        Unchanged in version 3.0: For backwards compatibility, this function always returns a float,
+        even if the quantity was created using a `Decimal` value. Use `to_decimal()` to get a
+        `Decimal` result.
         """
+        num = self._to_number(unit, float)
+        return float(num)
+
+    def to_decimal(self, unit: u.Unit[Q_co]) -> decimal.Decimal:
+        """
+        Converts this measurement to a number in the given unit. For example:
+
+        ```python
+        >>> u.minutes(1).to_number(u.seconds)
+        decimal.Decimal('60')
+        ```
+
+        Raises a `ValueError` if an incompatible unit is passed.
+
+        Added in version 3.0.
+        """
+        num = self._to_number(unit, decimal.Decimal)
+        return decimal.Decimal(num)
+
+    def _to_number(
+        self, unit: u.Unit[Q_co], type_preference: TypePreference = None
+    ) -> FloatOrDecimal:
         if self.quantity != unit.quantity:
             raise ValueError(
                 f"Cannot convert {self} (a {self.quantity}) to {unit} (a unit of {unit.quantity})"
             )
 
-        return self._value * (self._unit.multiplier / unit.multiplier)
+        multiplier = divide(self._unit.multiplier, unit.multiplier, type_preference)
+        return multiply(self._value, multiplier, type_preference)
 
     @classmethod
     def parse(cls, text: str, /) -> Quantity[Q_co]:
@@ -344,8 +388,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             else:
                 print("It's not a distance.")
         """
-
-        return cls.exponents == type(value).exponents
+        return isinstance(value, cls)
 
     def is_compatible_with(self, other: Quantity) -> t.TypeGuard[Quantity[Q_co]]:
         """
@@ -369,78 +412,78 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         return bool(self._value)
 
     def __float__(self) -> float:
-        return float(self._value * self._unit.multiplier)
+        return float(self._value) * float(self._unit.multiplier)
 
     def __neg__(self) -> Quantity[Q_co]:
         return Quantity(-self._value, self._unit)
 
     def __eq__(self, quantity: object, /) -> bool:
         if quantity == 0:
-            num = self._value * self._unit.multiplier
-            expected = 0
+            num = float(self)
+            expected = 0.0
         elif not isinstance(quantity, __class__):
             return NotImplemented
         elif not self.is_compatible_with(quantity):
             return False
         else:
             num = self.to_number(quantity._unit)
-            expected = quantity._value
+            expected = float(quantity._value)
 
         return math.isclose(num, expected)
 
     def __lt__(self, quantity: NullableQuantity[Q_co], /) -> bool:
         if quantity == 0:
-            num = self._value * self._unit.multiplier
-            expected = 0
+            num = float(self)
+            expected = 0.0
         elif not isinstance(quantity, __class__):
             return NotImplemented
         elif not self.is_compatible_with(quantity):
             return False
         else:
             num = self.to_number(quantity._unit)
-            expected = quantity._value
+            expected = float(quantity._value)
 
         return num < expected and not math.isclose(num, expected)
 
     def __le__(self, quantity: object, /) -> bool:
         if quantity == 0:
-            num = self._value * self._unit.multiplier
-            expected = 0
+            num = float(self)
+            expected = 0.0
         elif not isinstance(quantity, __class__):
             return NotImplemented
         elif not self.is_compatible_with(quantity):
             return False
         else:
             num = self.to_number(quantity._unit)
-            expected = quantity._value
+            expected = float(quantity._value)
 
         return num < expected or math.isclose(num, expected)
 
     def __gt__(self, quantity: object, /) -> bool:
         if quantity == 0:
-            num = self._value * self._unit.multiplier
-            expected = 0
+            num = float(self)
+            expected = 0.0
         elif not isinstance(quantity, __class__):
             return NotImplemented
         elif not self.is_compatible_with(quantity):
             return False
         else:
             num = self.to_number(quantity._unit)
-            expected = quantity._value
+            expected = float(quantity._value)
 
         return num > expected and not math.isclose(num, expected)
 
     def __ge__(self, quantity: object, /) -> bool:
         if quantity == 0:
-            num = self._value * self._unit.multiplier
-            expected = 0
+            num = float(self)
+            expected = 0.0
         elif not isinstance(quantity, __class__):
             return NotImplemented
         elif not self.is_compatible_with(quantity):
             return False
         else:
             num = self.to_number(quantity._unit)
-            expected = quantity._value
+            expected = float(quantity._value)
 
         return num > expected or math.isclose(num, expected)
 
@@ -449,7 +492,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             return self
 
         return Quantity(
-            self._value + quantity.to_number(self._unit),
+            add(self._value, quantity._to_number(self._unit)),
             self._unit,
         )
 
@@ -460,7 +503,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             return self
 
         return Quantity(
-            self._value - quantity.to_number(self._unit),
+            subtract(self._value, quantity.to_number(self._unit)),
             self._unit,
         )
 
@@ -477,11 +520,11 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
     def __mul__(self, other: float | Quantity[Q2]) -> Quantity:
         if isinstance(other, Quantity):
             return Quantity(
-                self._value * other._value,
+                multiply(self._value, other._value),
                 self._unit * other._unit,
             )
         else:
-            return Quantity(self._value * other, self._unit)
+            return Quantity(multiply(self._value, other), self._unit)
 
     @t.overload
     def __truediv__(self, number: float, /) -> Quantity[Q_co]: ...
@@ -492,11 +535,11 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
     def __truediv__(self, other: float | Quantity[Q2]) -> Quantity:
         if isinstance(other, Quantity):
             return Quantity(
-                self._value / other._value,
+                divide(self._value, other._value),
                 self._unit / other._unit,
             )
         else:
-            return Quantity(self._value / other, self._unit)
+            return Quantity(divide(self._value, other), self._unit)
 
     @t.overload
     def __rtruediv__(self, number: float, /) -> Quantity[DIV[u.ONE, Q_co]]: ...
@@ -507,12 +550,12 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
     def __rtruediv__(self, other: t.Union[float, Quantity[Q2]]) -> Quantity[DIV]:
         if isinstance(other, Quantity):
             return Quantity(
-                other._value / self._value,
+                divide(other._value, self._value),
                 other._unit / self._unit,
             )
         else:
             return Quantity(
-                other / self._value,
+                divide(other, self._value),
                 u.one / self._unit,
             )
 
@@ -554,11 +597,11 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         value, unit = self._find_unit_for_str()
         return _quantity_to_string(value, unit)
 
-    def _find_unit_for_str(self) -> tuple[float, u.Unit[Q_co]]:
-        value = self._value * self._unit.multiplier
+    def _find_unit_for_str(self) -> tuple[float | decimal.Decimal, u.Unit[Q_co]]:
+        value = multiply(self._value, self._unit.multiplier)
 
         # Special case: If the value is 0, use the base unit
-        if math.isclose(value, 0):
+        if math.isclose(float(value), 0):
             return 0, self._unit.quantity.base_unit
 
         # We want to find a suitable (i.e. human-readable) representation of this quantity, which
@@ -568,13 +611,17 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         if len(digits.lstrip("-")) < 4 and len(decimal_digits) < 4:
             return self._value, self._unit
 
-        return _find_most_suitable_unit(value, self._unit.quantity)
+        return _find_most_suitable_unit(value, self._unit.quantity, self._unit.systems)
 
 
 NullableQuantity = t.Union[Quantity[Q2], t.Literal[0]]
 
 
-def _find_most_suitable_unit(value: float, quantity: type[Quantity]) -> tuple[float, u.Unit]:
+def _find_most_suitable_unit(
+    value: float | decimal.Decimal,
+    quantity: type[Quantity],
+    systems: t.Iterable[str] | None = None,
+) -> tuple[float | decimal.Decimal, u.Unit]:
     # Goal: Find the combination of units that results in the *shortest* (i.e. fewest digits)
     # number.
     #
@@ -586,37 +633,48 @@ def _find_most_suitable_unit(value: float, quantity: type[Quantity]) -> tuple[fl
     # 0 and 999, use meters. Upwards of 1000, use kilometers". I'm afraid the structure might get
     # very large if multiple units and prefixes are involved, though.
 
-    # We'll use a greedy algorithm. We'll assume that there's always a unit with a factor of 1, so
-    # we don't need to plan ahead. We'll start with the largest exponent, pick the largest possible
-    # unit, and if that's not enough, add a prefix as well. Then we'll move on to the next
-    # dimension.
+    systems = frozenset(systems or [])
 
     # First, find out which units exist for this quantity. If there is a dedicated unit, like there
     # is Coloumbs for DURATION*ELECTRIC_CURRENT, we'll use that.
     if quantity.units:
-        unit = _find_most_suitable_unit_and_prefix(value, quantity.units)
-        value /= unit.multiplier
-    else:
-        unit = u.one
+        # Filter units by systems
+        candidates = quantity.units
+        if systems:
+            candidates = [u_ for u_ in candidates if not u_.systems or (u_.systems & systems)]
 
-        for quantity_caps, exponent in sorted(
-            quantity.exponents.items(), key=lambda pair: pair[1], reverse=True
-        ):
-            best_unit = _find_most_suitable_unit_and_prefix(
-                value, Quantity[quantity_caps].units, exponent
-            )
+        if candidates:
+            unit = _find_most_suitable_unit_and_prefix(value, candidates, systems=systems)
+            value = divide(value, unit.multiplier)
+            return value, unit
 
-            value /= best_unit.multiplier
-            unit *= best_unit
+    # No suitable registered units found, or it's a compound quantity without dedicated units.
+    # Decompose into base units.
+    unit = u.one
+
+    for quantity_caps, exponent in sorted(
+        quantity.exponents.items(), key=lambda pair: pair[1], reverse=True
+    ):
+        best_unit = _find_most_suitable_unit_and_prefix(
+            value, Quantity[quantity_caps].units, exponent, systems=systems
+        )
+
+        value = divide(value, best_unit.multiplier)
+        unit *= best_unit
 
     return value, unit
 
 
 def _find_most_suitable_unit_and_prefix(
-    value: float, sorted_units: t.Sequence[u.Unit], exponent: int = 1
+    value: float | decimal.Decimal,
+    sorted_units: t.Sequence[u.Unit],
+    exponent: int = 1,
+    systems: t.Iterable[str] | None = None,
 ) -> u.Unit:
     # Because prefixes cannot be applied to compound units (like m²), we can't just find a suitable
     # unit and then apply a prefix to it. We have to apply the prefix first, and then the exponent.
+
+    systems = frozenset(systems or [])
 
     unit = _find_most_suitable_multiplier(
         value,
@@ -653,8 +711,10 @@ def _find_most_suitable_unit_and_prefix(
 T = t.TypeVar("T", "u.Unit", "u.Prefix")
 
 
-def _find_most_suitable_multiplier(value: float, things: t.Iterable[T], exponent: int = 1) -> T:
-    value = abs(value)
+def _find_most_suitable_multiplier(
+    value: float | decimal.Decimal, things: t.Iterable[T], exponent: int = 1
+) -> T:
+    value = abs(float(value))
     candidates = [thing for thing in things if thing.multiplier**exponent <= value]
 
     if candidates:
@@ -663,11 +723,13 @@ def _find_most_suitable_multiplier(value: float, things: t.Iterable[T], exponent
         return min(things, key=lambda thing: thing.multiplier)
 
 
-def _quantity_to_string(value: float | str, unit: u.Unit) -> str:
+def _quantity_to_string(value: float | decimal.Decimal | str, unit: u.Unit) -> str:
     if isinstance(value, str):
         value_str = value
-    elif isinstance(value, int) or value.is_integer():
+    elif isinstance(value, int) or (isinstance(value, float) and value.is_integer()):
         value_str = str(int(value))
+    elif isinstance(value, decimal.Decimal) and value == value.to_integral_value():
+        value_str = str(value.to_integral_value())
     else:
         value_str = format(value, ".1f")
 

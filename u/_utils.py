@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections.abc
+import decimal
 import functools
 import re
 import sys
@@ -8,6 +9,8 @@ import types
 import typing as t
 
 import u
+
+from .maths import FloatOrDecimal
 
 
 C = t.TypeVar("C", bound=t.Callable)

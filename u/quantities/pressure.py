@@ -1,3 +1,5 @@
+import decimal
+
 from .force import FORCE, newtons
 from .area import AREA, square_meters
 from ..quantity import Quantity
@@ -25,9 +27,9 @@ PRESSURE = DIV[FORCE, AREA]
 Pressure = Quantity[PRESSURE]
 
 
-pascals = pascal = Pa = Unit(newtons / square_meters, "Pa")
+pascals = pascal = Pa = Unit(newtons / square_meters, "Pa", systems={"metric"})
 kilopascals = kilopascal = kPa = kilo(pascal)
-bars = bar = Unit(Pressure, "bar", 100_000 * pascal.multiplier)
-atmospheres = atmosphere = atm = Unit(Pressure, "atm", 101_325 * pascal.multiplier)
-torrs = torr = mmHg = Unit(Pressure, "torr", (101_325 / 760) * pascal.multiplier)
-psi = Unit(Pressure, "psi", 6894.757293168 * pascal.multiplier)
+bars = bar = Unit(Pressure, "bar", 100000 * pascal.multiplier, systems={"metric"})
+atmospheres = atmosphere = atm = Unit(Pressure, "atm", 101325 * pascal.multiplier)
+torrs = torr = mmHg = Unit(Pressure, "torr", (decimal.Decimal("101325") / 760) * pascal.multiplier, systems={"technical"})
+psi = Unit(Pressure, "psi", decimal.Decimal("6894.757293168") * pascal.multiplier, systems={"imperial"})

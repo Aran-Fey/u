@@ -19,4 +19,4 @@ class AMOUNT_OF_SUBSTANCE(QUANTITY):
 AmountOfSubstance = Quantity[AMOUNT_OF_SUBSTANCE]
 
 
-moles = mole = mol = Unit(AmountOfSubstance, "mol", 1)
+moles = mole = mol = Unit(AmountOfSubstance, "mol", 1, systems={"metric"})

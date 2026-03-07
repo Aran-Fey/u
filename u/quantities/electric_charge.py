@@ -17,4 +17,5 @@ ELECTRIC_CHARGE = MUL[DURATION, ELECTRIC_CURRENT]
 
 ElectricCharge = Quantity[ELECTRIC_CHARGE]
 
-coulombs = coulomb = C = Unit(seconds * amperes, "C")
+
+coulombs = coulomb = C = Unit(seconds * amperes, "C", systems={"metric"})

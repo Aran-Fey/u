@@ -13,4 +13,4 @@ class LUMINOUS_INTENSITY(QUANTITY):
 LuminousIntensity = Quantity[LUMINOUS_INTENSITY]
 
 
-candelas = candela = cd = Unit(LuminousIntensity, "cd", 1)
+candelas = candela = cd = Unit(LuminousIntensity, "cd", 1, systems={"metric"})

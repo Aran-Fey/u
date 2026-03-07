@@ -1,4 +1,4 @@
-from math import pi
+import decimal
 
 from ..quantity import Quantity
 from ..capital_quantities import QUANTITY
@@ -19,6 +19,10 @@ __all__ = [
 # fmt: on
 
 
+# Standard PI with high precision for Decimal math
+PI = decimal.Decimal("3.1415926535897932384626433832795028841971")
+
+
 class ANGLE(QUANTITY):
     pass
 
@@ -27,8 +31,8 @@ Angle = Quantity[ANGLE]
 
 
 radians = radian = rad = Unit(Angle, "rad", 1)
-degrees = degree = deg = Unit(Angle, "°", 2 * pi / 360)
-gradians = gradian = gons = gon = Unit(Angle, "ᵍ", 2 * pi / 400)
-turns = turn = tr = Unit(Angle, "tr", 2 * pi)
-arcminutes = arcminute = arcmin = Unit(Angle, "′", pi / 10800)
-arcseconds = arcsecond = arcsec = Unit(Angle, "″", pi / 648000)
+degrees = degree = deg = Unit(Angle, "°", 2 * PI / 360)
+gradians = gradian = gons = gon = Unit(Angle, "ᵍ", 2 * PI / 400)
+turns = turn = tr = Unit(Angle, "tr", 2 * PI)
+arcminutes = arcminute = arcmin = Unit(Angle, "′", PI / 10800)
+arcseconds = arcsecond = arcsec = Unit(Angle, "″", PI / 648000)

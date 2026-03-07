@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import decimal
 import typing as t
 
 import u
 
+from .maths import multiply
 from ._utils import cached
 
 __all__ = [
@@ -48,9 +50,9 @@ max_prefix_length = 0
 
 
 class Prefix:
-    def __init__(self, symbol: str, multiplier: float):
+    def __init__(self, symbol: str, multiplier: decimal.Decimal | int):
         self.symbol = symbol
-        self.multiplier = multiplier
+        self.multiplier = decimal.Decimal(multiplier)
 
         prefix_by_symbol[symbol] = self
 
@@ -72,7 +74,8 @@ class Prefix:
         return u.unit.lookup_unit(
             unit.quantity,
             self.symbol + unit.symbol,
-            self.multiplier * unit.multiplier,
+            multiply(self.multiplier, unit.multiplier, decimal.Decimal),
+            unit.systems,
         )
 
     def __repr__(self) -> str:
@@ -82,30 +85,30 @@ class Prefix:
 DUMMY_PREFIX = Prefix("", 1)
 
 
-quecto = Prefix("q", 1e-30)
-ronto = Prefix("r", 1e-27)
-yocto = Prefix("y", 1e-24)
-zepto = Prefix("z", 1e-21)
-atto = Prefix("a", 1e-18)
-femto = Prefix("f", 1e-15)
-pico = Prefix("p", 1e-12)
-nano = Prefix("n", 1e-9)
-micro = Prefix("µ", 1e-6)
-milli = Prefix("m", 1e-3)
-centi = Prefix("c", 1e-2)
-deci = Prefix("d", 1e-1)
-deka = Prefix("da", 1e1)
-hecto = Prefix("h", 1e2)
-kilo = Prefix("k", 1e3)
-mega = Prefix("M", 1e6)
-giga = Prefix("G", 1e9)
-tera = Prefix("T", 1e12)
-peta = Prefix("P", 1e15)
-exa = Prefix("E", 1e18)
-zetta = Prefix("Z", 1e21)
-yotta = Prefix("Y", 1e24)
-ronna = Prefix("R", 1e27)
-quetta = Prefix("Q", 1e30)
+quecto = Prefix("q", decimal.Decimal("1e-30"))
+ronto = Prefix("r", decimal.Decimal("1e-27"))
+yocto = Prefix("y", decimal.Decimal("1e-24"))
+zepto = Prefix("z", decimal.Decimal("1e-21"))
+atto = Prefix("a", decimal.Decimal("1e-18"))
+femto = Prefix("f", decimal.Decimal("1e-15"))
+pico = Prefix("p", decimal.Decimal("1e-12"))
+nano = Prefix("n", decimal.Decimal("1e-9"))
+micro = Prefix("µ", decimal.Decimal("1e-6"))
+milli = Prefix("m", decimal.Decimal("1e-3"))
+centi = Prefix("c", decimal.Decimal("1e-2"))
+deci = Prefix("d", decimal.Decimal("1e-1"))
+deka = Prefix("da", 10**1)
+hecto = Prefix("h", 10**2)
+kilo = Prefix("k", 10**3)
+mega = Prefix("M", 10**6)
+giga = Prefix("G", 10**9)
+tera = Prefix("T", 10**12)
+peta = Prefix("P", 10**15)
+exa = Prefix("E", 10**18)
+zetta = Prefix("Z", 10**21)
+yotta = Prefix("Y", 10**24)
+ronna = Prefix("R", 10**27)
+quetta = Prefix("Q", 10**30)
 
 
 STANDARD_SI_PREFIXES = (

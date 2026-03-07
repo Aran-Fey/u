@@ -59,3 +59,13 @@ ZeroOrDuration = ZeroOrQuantity[u.DURATION]
 
 Speed = u.Quantity[u.DIV[Q, u.DURATION]]
 DownloadSpeed = Speed[u.DATA_VOLUME]
+
+
+# Do the type guards work?
+untyped_quantity: u.Quantity = u.Quantity(0)
+
+if u.Distance.typecheck(untyped_quantity):
+    t.assert_type(untyped_quantity, u.Distance)
+
+if u.seconds(3).is_compatible_with(untyped_quantity):
+    t.assert_type(untyped_quantity, u.Duration)

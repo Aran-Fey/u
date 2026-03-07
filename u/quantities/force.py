@@ -30,4 +30,4 @@ FORCE = t.Union[
 Force = Quantity[FORCE]
 
 
-newtons = newton = N = Unit(kg * m / s / s, "N")
+newtons = newton = N = Unit(kg * m / s / s, "N", systems={"metric"})

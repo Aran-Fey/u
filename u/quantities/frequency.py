@@ -24,7 +24,7 @@ FREQUENCY = DIV[ONE, DURATION]
 Frequency = Quantity[FREQUENCY]
 
 
-hertzes = hertz = Hz = Unit(one / seconds, "Hz")
+hertzes = hertz = Hz = Unit(one / seconds, "Hz", systems={"metric"})
 
 kilohertzes = kilohertz = KHz = kilo(hertz)
 megahertzes = megahertz = MHz = mega(hertz)

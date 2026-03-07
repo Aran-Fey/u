@@ -20,6 +20,7 @@ import u
         (u.meters_per_second(30), u.kilometers_per_hour, 108),
         (u.square_meters(1_000_000), u.square_kilometers, 1),
     ],
+    ids=lambda value: value.symbol if isinstance(value, u.Unit) else repr(value),
 )
 def test_to_number(value: u.Quantity, unit: u.Unit, expected_result: float):
     result = value.to_number(unit)
@@ -50,6 +51,8 @@ def test_repr(value: u.Quantity, expected_result: str):
 @pytest.mark.parametrize(
     "value, expected_result",
     [
+        (u.inches(63360), "1 mi"),
+        (u.centimeters(160934.4), "1.6 km"),
         (u.kilometers(0), "0 m"),
         (u.meters(7), "7 m"),
         (u.kilometers(3.5), ["3.5 km", "3500 m"]),

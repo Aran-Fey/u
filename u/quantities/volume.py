@@ -1,3 +1,5 @@
+import decimal
+
 from .distance import DISTANCE, meter
 from ..quantity import Quantity
 from ..capital_quantities import CUBE
@@ -27,15 +29,15 @@ VOLUME = CUBE[DISTANCE]
 Volume = Quantity[VOLUME]
 
 
-cubic_meters = cubic_meter = m3 = meter**3
-liters = liter = l = L = Unit(Volume, "L", 0.001)
-milliliters = milliliter = ml = mL = Unit(Volume, "mL", 1e-6)
+cubic_meters = cubic_meter = m3 = meter**2 * meter
+liters = liter = l = L = Unit(Volume, "L", decimal.Decimal("0.001"), systems={"metric"})
+milliliters = milliliter = ml = mL = Unit(Volume, "mL", decimal.Decimal("1e-6"), systems={"metric"})
 
 # US Gallon
-gallons = gallon = gal = Unit(Volume, "gal", 0.003785411784)
-quarts = quart = qt = Unit(Volume, "qt", 0.000946352946)
-pints = pint = pt = Unit(Volume, "pt", 0.000473176473)
-cups = cup = Unit(Volume, "cup", 0.0002365882365)
-fluid_ounces = fluid_ounce = floz = Unit(Volume, "fl oz", 2.95735295625e-5)
-tablespoons = tablespoon = tbsp = Unit(Volume, "tbsp", 1.478676478125e-5)
-teaspoons = teaspoon = tsp = Unit(Volume, "tsp", 4.92892159375e-6)
+gallons = gallon = gal = Unit(Volume, "gal", decimal.Decimal("0.003785411784"), systems={"imperial"})
+quarts = quart = qt = Unit(Volume, "qt", decimal.Decimal("0.000946352946"), systems={"imperial"})
+pints = pint = pt = Unit(Volume, "pt", decimal.Decimal("0.000473176473"), systems={"imperial"})
+cups = cup = Unit(Volume, "cup", decimal.Decimal("0.0002365882365"), systems={"imperial"})
+fluid_ounces = fluid_ounce = floz = Unit(Volume, "fl oz", decimal.Decimal("2.95735295625e-5"), systems={"imperial"})
+tablespoons = tablespoon = tbsp = Unit(Volume, "tbsp", decimal.Decimal("1.478676478125e-5"), systems={"imperial"})
+teaspoons = teaspoon = tsp = Unit(Volume, "tsp", decimal.Decimal("4.92892159375e-6"), systems={"imperial"})
