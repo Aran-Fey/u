@@ -46,6 +46,11 @@ class Unit(t.Generic[Q_co]):
 
     Changed in version 3.0: To maximize precision, the `multiplier` is now always converted to a
     `decimal.Decimal`.
+
+    Added in version 3.0: The `systems` parameter and attribute. This emulates the concept of a
+    "unit system", like "imperial" or "metric". Currently, unit systems are only used by
+    `Quantity.__str__`, which tries to stay within the same unit system. (So for example,
+    `u.meters(1523)` will be printed as "1.5 km" and not as "0.9 mi".)
     """
 
     quantity: t.Final[type[Quantity[Q_co]]]

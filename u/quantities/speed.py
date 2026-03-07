@@ -5,6 +5,7 @@ from ..capital_quantities import DIV
 from ..unit import Unit
 
 
+# fmt: off
 __all__ = [
     "SPEED",
     "Speed",
@@ -14,14 +15,16 @@ __all__ = [
     "knots", "knot", "kn",
     "mach", "Ma",
 ]
+# fmt: on
 
 
 SPEED = DIV[DISTANCE, DURATION]
 
 Speed = Quantity[SPEED]
 
-meters_per_second = mps = meters / seconds
-kilometers_per_hour = kph = kilometers / hours
-miles_per_hour = mph = miles / hours
-knots = knot = kn = nautical_miles / hours
+
+meters_per_second = mps = Unit(meters / seconds, "m/s", systems={"metric"})
+kilometers_per_hour = kph = Unit(kilometers / hours, "km/h", systems={"metric"})
+miles_per_hour = mph = Unit(miles / hours, "mph", systems={"imperial"})
+knots = knot = kn = Unit(nautical_miles / hours, "kn", systems={"nautical"})
 mach = Ma = Unit(Speed, "Ma", 343, systems={"technical"})

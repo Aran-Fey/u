@@ -601,7 +601,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         value = multiply(self._value, self._unit.multiplier)
 
         # Special case: If the value is 0, use the base unit
-        if math.isclose(float(value), 0):
+        if math.isclose(value, 0):
             return 0, self._unit.quantity.base_unit
 
         # We want to find a suitable (i.e. human-readable) representation of this quantity, which
@@ -618,10 +618,10 @@ NullableQuantity = t.Union[Quantity[Q2], t.Literal[0]]
 
 
 def _find_most_suitable_unit(
-    value: float | decimal.Decimal,
+    value: FloatOrDecimal,
     quantity: type[Quantity],
-    systems: t.Iterable[str] | None = None,
-) -> tuple[float | decimal.Decimal, u.Unit]:
+    systems: frozenset[str],
+) -> tuple[FloatOrDecimal, u.Unit]:
     # Goal: Find the combination of units that results in the *shortest* (i.e. fewest digits)
     # number.
     #
@@ -633,15 +633,10 @@ def _find_most_suitable_unit(
     # 0 and 999, use meters. Upwards of 1000, use kilometers". I'm afraid the structure might get
     # very large if multiple units and prefixes are involved, though.
 
-    systems = frozenset(systems or [])
-
     # First, find out which units exist for this quantity. If there is a dedicated unit, like there
     # is Coloumbs for DURATION*ELECTRIC_CURRENT, we'll use that.
     if quantity.units:
-        # Filter units by systems
-        candidates = quantity.units
-        if systems:
-            candidates = [u_ for u_ in candidates if not u_.systems or (u_.systems & systems)]
+        candidates = _units_matching_systems(quantity.units, systems)
 
         if candidates:
             unit = _find_most_suitable_unit_and_prefix(value, candidates, systems=systems)
@@ -669,12 +664,12 @@ def _find_most_suitable_unit_and_prefix(
     value: float | decimal.Decimal,
     sorted_units: t.Sequence[u.Unit],
     exponent: int = 1,
-    systems: t.Iterable[str] | None = None,
+    systems: frozenset[str] = frozenset(),
 ) -> u.Unit:
     # Because prefixes cannot be applied to compound units (like m²), we can't just find a suitable
     # unit and then apply a prefix to it. We have to apply the prefix first, and then the exponent.
 
-    systems = frozenset(systems or [])
+    sorted_units = _units_matching_systems(sorted_units, systems)
 
     unit = _find_most_suitable_multiplier(
         value,
@@ -712,7 +707,7 @@ T = t.TypeVar("T", "u.Unit", "u.Prefix")
 
 
 def _find_most_suitable_multiplier(
-    value: float | decimal.Decimal, things: t.Iterable[T], exponent: int = 1
+    value: FloatOrDecimal, things: t.Iterable[T], exponent: int = 1
 ) -> T:
     value = abs(float(value))
     candidates = [thing for thing in things if thing.multiplier**exponent <= value]
@@ -723,7 +718,7 @@ def _find_most_suitable_multiplier(
         return min(things, key=lambda thing: thing.multiplier)
 
 
-def _quantity_to_string(value: float | decimal.Decimal | str, unit: u.Unit) -> str:
+def _quantity_to_string(value: FloatOrDecimal | str, unit: u.Unit) -> str:
     if isinstance(value, str):
         value_str = value
     elif isinstance(value, int) or (isinstance(value, float) and value.is_integer()):
@@ -734,3 +729,18 @@ def _quantity_to_string(value: float | decimal.Decimal | str, unit: u.Unit) -> s
         value_str = format(value, ".1f")
 
     return f"{value_str} {unit.symbol}"
+
+
+def _units_matching_systems(
+    units: t.Sequence[u.Unit], systems: frozenset[str]
+) -> t.Sequence[u.Unit]:
+    if not systems:
+        return units
+
+    filtered_units = [
+        unit for unit in units if not unit.systems or not unit.systems.isdisjoint(systems)
+    ]
+    if filtered_units:
+        return filtered_units
+
+    return units
