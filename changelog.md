@@ -1,3 +1,7 @@
+# 3.1
+
+- Add `__hash__` method
+
 # 3.0
 
 - Add support for `decimal.Decimal`. Unlike floats and Decimals, which throw a TypeError when used
