@@ -417,13 +417,8 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
     def __neg__(self) -> Quantity[Q_co]:
         return Quantity(-self._value, self._unit)
 
-    # TODO: Rethink equality. I threw in `math.isclose` because I expected problems with floating
-    # point precision, but failed to realize that this breaks the "transitive" property of equality.
-    # (It's now possible to have 3 quantities A, B, C where B is equal to A and C, but A is not
-    # equal to C.)
     def __hash__(self) -> int:
-        rounded_value = round(self._value, 10)
-        return hash((rounded_value, self._unit))
+        return hash((self._value, self._unit))
 
     def __eq__(self, quantity: object, /) -> bool:
         if quantity == 0:
@@ -437,7 +432,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             num = self.to_number(quantity._unit)
             expected = float(quantity._value)
 
-        return math.isclose(num, expected)
+        return num == expected
 
     def __lt__(self, quantity: NullableQuantity[Q_co], /) -> bool:
         if quantity == 0:
@@ -451,7 +446,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             num = self.to_number(quantity._unit)
             expected = float(quantity._value)
 
-        return num < expected and not math.isclose(num, expected)
+        return num < expected
 
     def __le__(self, quantity: object, /) -> bool:
         if quantity == 0:
@@ -465,7 +460,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             num = self.to_number(quantity._unit)
             expected = float(quantity._value)
 
-        return num < expected or math.isclose(num, expected)
+        return num <= expected
 
     def __gt__(self, quantity: object, /) -> bool:
         if quantity == 0:
@@ -479,7 +474,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             num = self.to_number(quantity._unit)
             expected = float(quantity._value)
 
-        return num > expected and not math.isclose(num, expected)
+        return num > expected
 
     def __ge__(self, quantity: object, /) -> bool:
         if quantity == 0:
@@ -493,7 +488,7 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             num = self.to_number(quantity._unit)
             expected = float(quantity._value)
 
-        return num > expected or math.isclose(num, expected)
+        return num >= expected
 
     def __add__(self, quantity: NullableQuantity[Q_co], /) -> Quantity[Q_co]:
         if quantity == 0:

@@ -1,3 +1,9 @@
+# 4.0
+
+- Comparison operators in `Quantity` no longer use `math.isclose`, and hashing no longer rounds.
+  Basically, comparing `Quantity` objects is now just as unpredictable as comparing floats. The
+  upside is that equality is now transitive. (i.e. if `a == b` and `b == c`, then `a == c`.)
+
 # 3.1
 
 - Add `__hash__` method
