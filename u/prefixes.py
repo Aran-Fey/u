@@ -86,21 +86,27 @@ class Prefix:
 
     @cached
     def __call__(self, unit: u.Unit[Q]) -> u.Unit[Q]:
-        index = _find_attachment_point(unit.symbol)
-        if index is None:
-            symbol = f"{self.symbol}({unit.symbol})"
-        else:
-            symbol = unit.symbol[:index] + self.symbol + unit.symbol[index:]
-
         return u.unit.lookup_unit(
             unit.quantity,
-            symbol,
+            _prefixed_symbol(self.symbol, unit.symbol),
             multiply(self.multiplier, unit.multiplier, decimal.Decimal),
             unit.systems,
         )
 
     def __repr__(self) -> str:
         return f"<Prefix {self.symbol}>"
+
+
+def _prefixed_symbol(prefix_symbol: str, unit_symbol: str) -> str:
+    """
+    Applies a prefix to a unit symbol, like "k" + "m/s" -> "km/s". If the prefix can't be attached to
+    any factor of the symbol, the symbol is wrapped in parentheses: "k" + "m²" -> "k(m²)".
+    """
+    index = _find_attachment_point(unit_symbol)
+    if index is None:
+        return f"{prefix_symbol}({unit_symbol})"
+
+    return unit_symbol[:index] + prefix_symbol + unit_symbol[index:]
 
 
 def _find_attachment_point(symbol: str) -> int | None:
@@ -110,19 +116,34 @@ def _find_attachment_point(symbol: str) -> int | None:
 
     Since a prefix only scales the factor it's attached to, a factor is only eligible if its
     exponent is 1 ("km²" is 10⁶ m², not 10³ m²) and it doesn't already have a prefix. (Only units
-    without a prefix are registered by their symbol.) The first eligible factor is used, so "m/s"
-    becomes "km/s" and "m²*s" becomes "m²*ks".
+    without a prefix are registered by their symbol.) Only the numerator is considered, and nothing
+    inside parentheses. The first eligible factor is used, so "m/s" becomes "km/s" and "m²*s"
+    becomes "m²*ks".
     """
-    for match in SYMBOL_REGEX.finditer(symbol):
+    # Find the end of the numerator, i.e. the first "/" that isn't inside parentheses
+    depth = 0
+    numerator_end = len(symbol)
+    for index, char in enumerate(symbol):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif char == "/" and depth == 0:
+            numerator_end = index
+            break
+
+    for match in SYMBOL_REGEX.finditer(symbol[:numerator_end]):
         operator, factor, exponent = match.groups()
+        start = match.start(2)
 
         if (
             operator != "/"
             and parse_exponent(exponent) == 1
             and factor != "1"
             and factor in u.unit.units_by_symbol
+            and symbol.count("(", 0, start) == symbol.count(")", 0, start)
         ):
-            return match.start(2)
+            return start
 
     return None
 

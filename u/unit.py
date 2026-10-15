@@ -122,6 +122,11 @@ class Unit(t.Generic[Q_co]):
 
     @staticmethod
     def _from_symbol(symbol: str) -> Unit:
+        # A prefixed group like "k(m²)"
+        if symbol.endswith(")"):
+            prefix_symbol, _, group = symbol[:-1].partition("(")
+            return u.Prefix.from_symbol(prefix_symbol)(Unit.parse(group))
+
         try:
             return units_by_symbol[symbol]
         except KeyError:
@@ -259,29 +264,9 @@ class Unit(t.Generic[Q_co]):
 
     @cached
     def __truediv__(self, other: Unit[Q2], /) -> Unit[DIV[Q_co, Q2]]:
-        def make_symbol():
-            quantity = t.get_args(self.quantity)[0]
-            try:
-                quantity_name = quantity.__name__
-            except AttributeError:
-                # Bleh, old `typing` module
-                quantity_name = quantity._name
-
-            if quantity_name == "ONE" and "*" not in other.symbol and "/" not in other.symbol:
-                if "*" in other.symbol or "/" in other.symbol:
-                    symbol = f"({other.symbol})⁻¹"
-                else:
-                    symbol = other.symbol + "⁻¹"
-            elif "*" in other.symbol or "(" in other.symbol:
-                symbol = join_symbols(self.symbol, other.symbol, "/(") + ")"
-            else:
-                symbol = join_symbols(self.symbol, other.symbol, "/")
-
-            return symbol
-
         return lookup_unit(
             join_quantities(self.quantity, other.quantity, DIV),
-            make_symbol,
+            lambda: join_symbols(self.symbol, other.symbol, "/"),
             divide(self.multiplier, other.multiplier, decimal.Decimal),
             combine_systems(self.systems, other.systems),
         )

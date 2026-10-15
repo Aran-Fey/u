@@ -43,13 +43,37 @@ def test_prefix_symbol(unit: u.Unit, expected_symbol: str):
     ids=lambda unit: unit.symbol,
 )
 def test_prefix_on_unregistered_compound_unit(unit: u.Unit):
-    # The order of the factors depends on which unit was created first, so we can't hardcode
-    # the expected symbols. The prefix must be attached to a factor with an exponent of 1.
+    # Units are cached by quantity and multiplier, so the symbol depends on which equivalent unit
+    # was created first (e.g. "m²*ks" or "k(m²)*s"). The exact symbols are tested below.
     prefixed = u.kilo(unit)
 
-    assert "(" not in prefixed.symbol
     assert prefixed(1) == unit(1000)
     assert u.Unit.parse(prefixed.symbol) == prefixed
+
+
+@pytest.mark.parametrize(
+    "unit_symbol, expected_symbol",
+    [
+        ("m", "km"),
+        ("m/s", "km/s"),
+        ("m*s", "km*s"),
+        ("m²*s", "m²*ks"),
+        ("m/(s*A)", "km/(s*A)"),
+        ("k(m²)*s", "k(m²)*ks"),
+        # No eligible factor
+        ("m²", "k(m²)"),
+        ("s⁻¹", "k(s⁻¹)"),
+        ("km/h", "k(km/h)"),
+        ("1/s", "k(1/s)"),
+        # Factors in the denominator or in parentheses aren't eligible
+        ("m²/(s*A*K)", "k(m²/(s*A*K))"),
+        ("k(m*s)", "k(k(m*s))"),
+    ],
+)
+def test_prefixed_symbol(unit_symbol: str, expected_symbol: str):
+    from u.prefixes import _prefixed_symbol
+
+    assert _prefixed_symbol("k", unit_symbol) == expected_symbol
 
 
 # The micro prefix is commonly written as "µ" (MICRO SIGN), "μ" (GREEK SMALL LETTER MU) or "u"

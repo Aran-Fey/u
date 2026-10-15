@@ -41,6 +41,10 @@
   Previously, prefixing unregistered compound units raised a `ValueError`, and prefixing registered
   ones like `u.m2` produced misleading symbols like "km²" (which means 10⁶ m²).
 - Fix `str()` printing nonsensical symbols like "3 kkm²" for `u.km2(3000)`
+- Unit symbols can now contain parentheses, both when parsing and in generated symbols: Denominators
+  with multiple factors are written as "kg/(m*s²)", and prefixed groups like "k(m²)" can be
+  parsed. "m/s/A" can still be parsed. Every generated symbol can now be parsed again.
+- Fix the symbols of units divided by compound units, e.g. `u.m / (u.kg * u.A)` was "m*kg*A)"
 
 # 4.0
 

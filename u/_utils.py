@@ -128,22 +128,119 @@ def format_duration(seconds: FloatOrDecimal, format_: str, number_format: str | 
 SYMBOL_REGEX = re.compile(r"(^|[*/])([^*/]+?)([⁻⁺⁰¹²³⁴⁵⁶⁷⁸⁹]*)\s*(?=[*/]|$)")
 
 
+EXPONENT_CHARS = "⁻⁺⁰¹²³⁴⁵⁶⁷⁸⁹"
+
+
 def parse_symbol(symbol: str) -> t.Counter[str]:
     """
-    Parses a symbol into a Counter of exponents.
+    Parses a symbol into a Counter of the symbols it consists of and their exponents.
 
     ```
     >>> parse_symbol('1/s²')
     Counter({'1': 1, 's': -2})
+    >>> parse_symbol('kg*m/(s²*A)')
+    Counter({'kg': 1, 'm': 1, 's': -2, 'A': -1})
     ```
-    """
-    result = collections.Counter()
 
-    for op, sym, power in SYMBOL_REGEX.findall(symbol):
-        multiplier = -1 if op == "/" else 1
-        result[sym.strip()] += multiplier * parse_exponent(power)
+    Parenthesized groups are expanded, unless they have a prefix: The prefix applies to the group as
+    a whole, so something like "k(m²)" is treated as a single symbol.
+    """
+    if not symbol.strip():
+        return collections.Counter()
+
+    parser = _SymbolParser(symbol)
+    result = parser.parse_product()
+
+    if parser.pos != len(symbol):
+        raise parser.error()
 
     return result
+
+
+class _SymbolParser:
+    """
+    A recursive descent parser for unit symbols. The grammar is:
+
+        product := factor (("*" | "/") factor)*
+        factor  := (name | name? "(" product ")") exponent?
+
+    A "/" only applies to the factor directly after it, so "m/s*A" is "m*A/s".
+    """
+
+    def __init__(self, text: str):
+        self.text = text
+        self.pos = 0
+
+    def error(self) -> ValueError:
+        return ValueError(f"Invalid unit symbol: {self.text!r}")
+
+    def _skip_whitespace(self) -> None:
+        while self.text[self.pos : self.pos + 1].isspace():
+            self.pos += 1
+
+    def _next_char(self) -> str:
+        return self.text[self.pos : self.pos + 1]
+
+    def parse_product(self) -> t.Counter[str]:
+        result = collections.Counter[str]()
+        sign = 1
+
+        while True:
+            for symbol, exponent in self.parse_factor().items():
+                result[symbol] += sign * exponent
+
+            self._skip_whitespace()
+
+            char = self._next_char()
+            if char == "*":
+                sign = 1
+            elif char == "/":
+                sign = -1
+            else:
+                return result
+
+            self.pos += 1
+
+    def parse_factor(self) -> t.Counter[str]:
+        self._skip_whitespace()
+
+        start = self.pos
+        while self._next_char() and self._next_char() not in "*/()" + EXPONENT_CHARS:
+            self.pos += 1
+        name = self.text[start : self.pos].strip()
+
+        if self._next_char() == "(":
+            self.pos += 1
+            group_start = self.pos
+            group = self.parse_product()
+
+            if self._next_char() != ")":
+                raise self.error()
+
+            group_text = self.text[group_start : self.pos].strip()
+            self.pos += 1
+
+            if name:
+                factors = collections.Counter({f"{name}({group_text})": 1})
+            else:
+                factors = group
+        elif name:
+            factors = collections.Counter({name: 1})
+        else:
+            raise self.error()
+
+        exponent_start = self.pos
+        while self._next_char() and self._next_char() in EXPONENT_CHARS:
+            self.pos += 1
+
+        try:
+            exponent = parse_exponent(self.text[exponent_start : self.pos])
+        except ValueError:
+            raise self.error() from None
+
+        return collections.Counter(
+            {symbol: power * exponent for symbol, power in factors.items()}
+        )
 
 
 POW_TO_NUM = str.maketrans("⁻⁺⁰¹²³⁴⁵⁶⁷⁸⁹", "-+0123456789")
@@ -164,36 +261,41 @@ def str_exponent(exp: int) -> str:
     return str(exp).translate(NUM_TO_POW)
 
 
-def join_symbols(symbol1: str, symbol2: str, operator: str) -> str:
-    powers1 = parse_symbol(symbol1)
+def join_symbols(symbol1: str, symbol2: str, operator: t.Literal["*", "/"]) -> str:
+    powers = parse_symbol(symbol1)
+    sign = -1 if operator == "/" else 1
 
-    powers2 = parse_symbol(symbol2)
-    if operator == "/":
-        powers2 = {symbol: -exponent for symbol, exponent in powers2.items()}
+    for symbol, exponent in parse_symbol(symbol2).items():
+        powers[symbol] += sign * exponent
 
-    powers1.update(powers2)
-    powers1.pop("1", None)
+    return format_symbol(powers)
 
-    # Find the first symbol with a positive exponent
-    segments = []
 
-    for symbol, exponent in powers1.items():
-        if exponent > 0:
-            del powers1[symbol]
-            segments.append(f"{symbol}{str_exponent(exponent)}")
-            break
-    else:
-        segments.append("1")
+def format_symbol(powers: t.Mapping[str, int]) -> str:
+    """
+    Creates a symbol like "kg*m/(s²*A)" from a mapping of symbols to exponents.
+    """
+    powers = {
+        symbol: exponent
+        for symbol, exponent in powers.items()
+        if exponent != 0 and symbol != "1"
+    }
 
-    # Add the remaining symbols
-    for symbol, exponent in powers1.items():
-        segments += [
-            "*" if exponent > 0 else "/",
-            symbol,
-            str_exponent(abs(exponent)),
-        ]
+    numerator = [symbol + str_exponent(exp) for symbol, exp in powers.items() if exp > 0]
+    denominator = [symbol + str_exponent(-exp) for symbol, exp in powers.items() if exp < 0]
 
-    return "".join(segments)
+    # "s⁻¹" reads better than "1/s"
+    if not numerator:
+        return "*".join(symbol + str_exponent(exp) for symbol, exp in powers.items()) or "1"
+
+    result = "*".join(numerator)
+
+    if len(denominator) == 1:
+        result += "/" + denominator[0]
+    elif denominator:
+        result += "/(" + "*".join(denominator) + ")"
+
+    return result
 
 
 class ExponentDict(collections.abc.Mapping[type["u.QUANTITY"], int]):
