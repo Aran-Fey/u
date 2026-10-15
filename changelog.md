@@ -35,6 +35,12 @@
 - Fix `typing.Annotated[u.Duration, ...]` crashing on Python 3.10
 - Fix `str()` of short durations, e.g. `u.seconds(0.0015)` was printed as "0.0 s" instead of
   "1.5 ms"
+- Prefixes can now be applied to any unit. The prefix is attached to the first factor of the
+  symbol that has an exponent of 1 and no prefix yet (`u.kilo(u.mps)` is "km/s"). If there is no
+  such factor, the symbol is wrapped in parentheses: `u.kilo(u.m2)` is "k(m²)", i.e. 1000 m².
+  Previously, prefixing unregistered compound units raised a `ValueError`, and prefixing registered
+  ones like `u.m2` produced misleading symbols like "km²" (which means 10⁶ m²).
+- Fix `str()` printing nonsensical symbols like "3 kkm²" for `u.km2(3000)`
 
 # 4.0
 

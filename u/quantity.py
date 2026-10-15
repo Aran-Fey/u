@@ -14,7 +14,6 @@ from ._utils import (
     ExponentDict,
     str_exponent,
     parse_duration,
-    parse_symbol,
     format_duration,
 )
 from .capital_quantities import QUANTITY, DIV, MUL, MUL_
@@ -750,17 +749,17 @@ def _find_most_suitable_unit_and_prefix(
         abs(exponent),
     )
 
-    # There are a few situations where we'll try to add a prefix:
+    # There are a few situations where we'll try to add a prefix (if the unit can take one, which
+    # units like m² and km/h can't without wrapping the symbol in parentheses, which is ugly):
     # - The largest available unit was selected
     # - The smallest available unit was selected, but it's still too large (like 0.0015 seconds).
-    #   Only simple units are eligible, since compound units like km/h can't take another prefix.
     # - There is a huge gap between the selected unit and the next one, like meter and lightsecond.
-    add_prefix = unit is sorted_units[-1] or (
-        unit is sorted_units[0]
-        and unit.multiplier ** abs(exponent) > abs(value)
-        and _is_simple_symbol(unit.symbol)
+    can_add_prefix = u.Prefix.can_attach_to(unit)
+    add_prefix = can_add_prefix and (
+        unit is sorted_units[-1]
+        or (unit is sorted_units[0] and unit.multiplier ** abs(exponent) > abs(value))
     )
-    if not add_prefix:
+    if can_add_prefix and not add_prefix:
         selected_index = sorted_units.index(unit)
         try:
             next_unit = sorted_units[selected_index + 1]
@@ -778,11 +777,6 @@ def _find_most_suitable_unit_and_prefix(
         )
 
     return unit**exponent
-
-
-def _is_simple_symbol(symbol: str) -> bool:
-    exponents = parse_symbol(symbol)
-    return len(exponents) == 1 and next(iter(exponents.values())) == 1
 
 
 T = t.TypeVar("T", "u.Unit", "u.Prefix")

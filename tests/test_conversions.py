@@ -69,6 +69,8 @@ def test_repr(value: u.Quantity, expected_result: str):
         (u.mps(1 / 60), ["1 m/min", "16.7 mm/s"]),
         ((u.bytes / u.second)(10_000), "10 kB/s"),
         (u.square_meters(3_000_000), "3 km²"),
+        (u.square_kilometers(3000), "3000 km²"),
+        (u.cubic_meters(5000), "5000 m³"),
         (u.meters(-3), "-3 m"),
         (u.meters(-3000), "-3 km"),
         (u.seconds(0.0015), "1.5 ms"),

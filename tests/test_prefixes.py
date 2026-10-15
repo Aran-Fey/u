@@ -15,9 +15,41 @@ def test_prefix_on_registered_compound_unit():
     assert u.kilo(u.hertz)(1) == u.hertz(1_000)
 
 
-def test_prefix_on_compound_unit():
-    with pytest.raises(ValueError):
-        u.kilo(u.square_meters)
+@pytest.mark.parametrize(
+    "unit, expected_symbol",
+    [
+        (u.meters_per_second, "km/s"),
+        (u.miles_per_hour, "kmph"),
+        # "km²" would mean 10⁶ m², so the symbol must be wrapped
+        (u.square_meters, "k(m²)"),
+        (u.cubic_meters, "k(m³)"),
+        (1 / u.meters, "k(m⁻¹)"),
+        # Already prefixed
+        (u.square_kilometers, "k(km²)"),
+        (u.kilometers_per_hour, "k(km/h)"),
+    ],
+    ids=lambda value: getattr(value, "symbol", value),
+)
+def test_prefix_symbol(unit: u.Unit, expected_symbol: str):
+    prefixed = u.kilo(unit)
+
+    assert prefixed.symbol == expected_symbol
+    assert prefixed(1) == unit(1000)
+
+
+@pytest.mark.parametrize(
+    "unit",
+    [u.meters * u.seconds, u.meters**2 * u.seconds, u.meters * u.seconds**2],
+    ids=lambda unit: unit.symbol,
+)
+def test_prefix_on_unregistered_compound_unit(unit: u.Unit):
+    # The order of the factors depends on which unit was created first, so we can't hardcode
+    # the expected symbols. The prefix must be attached to a factor with an exponent of 1.
+    prefixed = u.kilo(unit)
+
+    assert "(" not in prefixed.symbol
+    assert prefixed(1) == unit(1000)
+    assert u.Unit.parse(prefixed.symbol) == prefixed
 
 
 # The micro prefix is commonly written as "µ" (MICRO SIGN), "μ" (GREEK SMALL LETTER MU) or "u"

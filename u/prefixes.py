@@ -6,7 +6,7 @@ import typing as t
 import u
 
 from .maths import multiply
-from ._utils import cached
+from ._utils import SYMBOL_REGEX, cached, parse_exponent
 
 __all__ = [
     "Prefix",
@@ -76,20 +76,55 @@ class Prefix:
         except KeyError:
             raise ValueError(f"The symbol {symbol!r} doesn't correspond to any Prefix")
 
+    @staticmethod
+    def can_attach_to(unit: u.Unit) -> bool:
+        """
+        Returns whether prefixes can be attached to one of the unit's factors, like "km/s". If not,
+        prefixing the unit wraps its symbol in parentheses instead, like "k(m²)".
+        """
+        return _find_attachment_point(unit.symbol) is not None
+
     @cached
     def __call__(self, unit: u.Unit[Q]) -> u.Unit[Q]:
-        if isinstance(unit, u.unit.UnregisteredUnit):
-            raise ValueError("Prefixes cannot be applied to compound units") from None
+        index = _find_attachment_point(unit.symbol)
+        if index is None:
+            symbol = f"{self.symbol}({unit.symbol})"
+        else:
+            symbol = unit.symbol[:index] + self.symbol + unit.symbol[index:]
 
         return u.unit.lookup_unit(
             unit.quantity,
-            self.symbol + unit.symbol,
+            symbol,
             multiply(self.multiplier, unit.multiplier, decimal.Decimal),
             unit.systems,
         )
 
     def __repr__(self) -> str:
         return f"<Prefix {self.symbol}>"
+
+
+def _find_attachment_point(symbol: str) -> int | None:
+    """
+    Returns the index in the `symbol` where a prefix can be inserted, or `None` if there is no such
+    place.
+
+    Since a prefix only scales the factor it's attached to, a factor is only eligible if its
+    exponent is 1 ("km²" is 10⁶ m², not 10³ m²) and it doesn't already have a prefix. (Only units
+    without a prefix are registered by their symbol.) The first eligible factor is used, so "m/s"
+    becomes "km/s" and "m²*s" becomes "m²*ks".
+    """
+    for match in SYMBOL_REGEX.finditer(symbol):
+        operator, factor, exponent = match.groups()
+
+        if (
+            operator != "/"
+            and parse_exponent(exponent) == 1
+            and factor != "1"
+            and factor in u.unit.units_by_symbol
+        ):
+            return match.start(2)
+
+    return None
 
 
 DUMMY_PREFIX = Prefix("", 1)
