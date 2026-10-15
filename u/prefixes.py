@@ -50,14 +50,24 @@ max_prefix_length = 0
 
 
 class Prefix:
-    def __init__(self, symbol: str, multiplier: decimal.Decimal | int):
+    def __init__(
+        self,
+        symbol: str,
+        multiplier: decimal.Decimal | int,
+        aliases: t.Iterable[str] = (),
+    ):
+        """
+        `aliases` are alternative spellings of the `symbol` that are accepted when parsing, but
+        never used for output.
+        """
         self.symbol = symbol
         self.multiplier = decimal.Decimal(multiplier)
 
-        prefix_by_symbol[symbol] = self
-
         global max_prefix_length
-        max_prefix_length = max(max_prefix_length, len(symbol))
+
+        for sym in (symbol, *aliases):
+            prefix_by_symbol[sym] = self
+            max_prefix_length = max(max_prefix_length, len(sym))
 
     @classmethod
     def from_symbol(cls, symbol: str) -> Prefix:
@@ -93,7 +103,9 @@ atto = Prefix("a", decimal.Decimal("1e-18"))
 femto = Prefix("f", decimal.Decimal("1e-15"))
 pico = Prefix("p", decimal.Decimal("1e-12"))
 nano = Prefix("n", decimal.Decimal("1e-9"))
-micro = Prefix("µ", decimal.Decimal("1e-6"))
+# The official symbol is MICRO SIGN, but GREEK SMALL LETTER MU looks identical and "u" is a
+# common ASCII replacement
+micro = Prefix("\N{MICRO SIGN}", decimal.Decimal("1e-6"), aliases=["\N{GREEK SMALL LETTER MU}", "u"])
 milli = Prefix("m", decimal.Decimal("1e-3"))
 centi = Prefix("c", decimal.Decimal("1e-2"))
 deci = Prefix("d", decimal.Decimal("1e-1"))

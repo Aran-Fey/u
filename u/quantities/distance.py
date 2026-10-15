@@ -11,7 +11,7 @@ __all__ = [
     "DISTANCE",
     "Distance",
     "nanometers", "nanometer", "nm",
-    "micrometers", "micrometer", "μm",
+    "micrometers", "micrometer", "μm", "um",
     "millimeters", "millimeter", "mm",
     "centimeters", "centimeter", "cm",
     "decimeters", "decimeter", "dm",
@@ -54,7 +54,7 @@ fathoms = fathom = Unit(Distance, "fathom", decimal.Decimal("1.8288"), systems={
 mils = mil = Unit(Distance, "mil", decimal.Decimal("0.0000254"), systems={"imperial"})
 
 nanometers = nanometer = nm = nano(meter)
-micrometers = micrometer = μm = micro(meter)
+micrometers = micrometer = μm = um = micro(meter)
 millimeters = millimeter = mm = milli(meter)
 centimeters = centimeter = cm = centi(meter)
 decimeters = decimeter = dm = deci(meter)

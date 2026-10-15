@@ -1,4 +1,4 @@
-from ..prefixes import SI_PREFIXES, milli
+from ..prefixes import SI_PREFIXES, milli, micro, nano
 from ..quantity import Quantity
 from ..capital_quantities import QUANTITY
 from ..unit import Unit
@@ -17,6 +17,9 @@ __all__ = [
     "decades", "decade", "dec",
     "centuries", "century", "cent", "c",
     "millenia", "millenium", "mil", "ka", "ky",
+    "milliseconds", "millisecond", "msec", "ms",
+    "microseconds", "microsecond", "μsec", "μs", "usec", "us",
+    "nanoseconds", "nanosecond", "ns",
 ]
 # fmt: on
 
@@ -39,3 +42,7 @@ years = year = yr = y = Unit(Duration, "yr", 31_536_000, systems=SYSTEMS)
 decades = decade = dec = Unit(Duration, "dec", 315_360_000, systems=SYSTEMS)
 centuries = century = cent = c = Unit(Duration, "cent", 3_153_600_000, systems=SYSTEMS)
 millenia = millenium = mil = ka = ky = Unit(Duration, "mil", 31_536_000_000, systems=SYSTEMS)
+
+milliseconds = millisecond = msec = ms = milli(seconds)
+microseconds = microsecond = μsec = μs = usec = us = micro(seconds)
+nanoseconds = nanosecond = ns = nano(seconds)

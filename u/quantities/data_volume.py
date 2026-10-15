@@ -14,6 +14,7 @@ __all__ = [
     "DATA_VOLUME",
     "DataVolume",
     "bytes", "byte", "B",
+    "kilobytes", "kilobyte", "kB",
     "megabytes", "megabyte", "MB",
     "gigabytes", "gigabyte", "GB",
     "terabytes", "terabyte", "TB",

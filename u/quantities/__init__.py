@@ -1,5 +1,6 @@
 from .acceleration import *
 from .amount_of_substance import *
+from .angle import *
 from .area import *
 from .data_volume import *
 from .data_transfer_speed import *

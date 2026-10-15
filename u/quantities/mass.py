@@ -11,7 +11,7 @@ __all__ = [
     "MASS",
     "Mass",
     "nanograms", "nanogram", "ng",
-    "micrograms", "microgram", "μg",
+    "micrograms", "microgram", "μg", "ug",
     "milligrams", "milligram", "mg",
     "centigrams", "centigram", "cg",
     "decigrams", "decigram", "dg",
@@ -48,7 +48,7 @@ slugs = slug = Unit(Mass, "slug", decimal.Decimal("14593.9029"), systems={"imper
 daltons = dalton = Da = Unit(Mass, "Da", decimal.Decimal("1.66053906660e-24"))
 
 nanograms = nanogram = ng = nano(grams)
-micrograms = microgram = μg = micro(grams)
+micrograms = microgram = μg = ug = micro(grams)
 milligrams = milligram = mg = milli(grams)
 centigrams = centigram = cg = centi(grams)
 decigrams = decigram = dg = deci(grams)
