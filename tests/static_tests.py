@@ -29,7 +29,7 @@ area: u.Area = (u.m * u.m)(1)
 
 # In the calculations above, the type checker knows the exact type of each expression. Make sure
 # math also works with unions.
-t.reveal_type(t.cast(u.Unit[u.ACCELERATION], ...) * u.s)
+t.reveal_type(t.cast(u.Unit[u.ACCELERATION], object()) * u.s)
 # speed: u.Speed = (t.cast(u.Unit[u.ACCELERATION], ...) * u.s)(1)
 
 # Is quantity math type safe?
