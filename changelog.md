@@ -1,3 +1,41 @@
+# Unreleased
+
+- `Quantity` now supports `abs()`
+- Add `u.Point`
+- Add `u.Angle` and its units (`radians`, `degrees`, `gradians`, `turns`, `arcminutes`,
+  `arcseconds`)
+- Add `u.milliseconds` (`u.ms`), `u.microseconds` (`u.μs`, `u.us`) and `u.nanoseconds` (`u.ns`)
+- Add ASCII aliases for the other micro units: `u.um` (micrometers) and `u.ug` (micrograms)
+- Parsing now accepts "μ" (GREEK SMALL LETTER MU) and "u" as alternative spellings of the micro
+  prefix "µ" (MICRO SIGN), e.g. `u.Duration.parse("5us")`. Output still uses "µ".
+- Export `u.kilobytes` (`u.kB`), which existed but was missing from `__all__`
+- `Duration.parse` now also accepts the formats "HH:MM:SS", "MM:SS" and "SS", optionally with
+  fractional seconds like "1:30.5". The leading number is unlimited (e.g. "90:00" is 90 minutes),
+  but the following numbers must have 2 digits and be between 00 and 59.
+- Durations can now be formatted as `H:MM:SS`, `HH:MM:SS`, `M:SS`, `MM:SS` or `SS`, e.g.
+  `f"{duration:MM:SS}"`. `f"{duration::}"` uses the shortest of these, and a number format can be
+  prepended: `f"{duration:.2f :}"`.
+- Ordering (`<`, `<=`, `>`, `>=`) quantities of different kinds, like a duration and a distance, now
+  raises a `TypeError` instead of returning `False`, and is also a type checking error now.
+  Equality comparisons still return `False`, just like `1 == "1"`.
+- Adding or subtracting a number other than 0 now raises a `TypeError` instead of an
+  `AttributeError` or `AssertionError`
+- Adding or subtracting quantities of different kinds now raises a `TypeError` instead of a
+  `ValueError`, consistent with ordering and with what type checkers report. (`to_number` with an
+  incompatible unit still raises a `ValueError`.)
+- Comparisons and hashing now use the quantities' values in the base unit, computed with Decimal
+  precision. This makes equality symmetric and fixes cases like `u.inches(1) == u.centimeters(2.54)`.
+  `float(quantity)` uses the same Decimal precision.
+- Fix equal quantities having different hashes (e.g. `u.minutes(1)` and `u.seconds(60)`), which
+  broke sets and dict keys
+- Fix quantities that cancel out not being removed, e.g. `u.minutes(1) / u.seconds(1)` was not a
+  `u.One`, and `u.m * u.s / u.s` was not compatible with `u.Distance`
+- Fix `typing.get_type_hints` crashing on Python 3.14 for functions annotated with quantities.
+  (`Quantity[(X,)]` is now equivalent to `Quantity[X]`.)
+- Fix `typing.Annotated[u.Duration, ...]` crashing on Python 3.10
+- Fix `str()` of short durations, e.g. `u.seconds(0.0015)` was printed as "0.0 s" instead of
+  "1.5 ms"
+
 # 4.0
 
 - Comparison operators in `Quantity` no longer use `math.isclose`, and hashing no longer rounds.

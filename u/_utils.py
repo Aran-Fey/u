@@ -3,13 +3,13 @@ from __future__ import annotations
 import collections.abc
 import decimal
 import functools
+from operator import is_
 import re
 import sys
 import types
 import typing as t
 
 import u
-
 from .maths import FloatOrDecimal
 
 
@@ -40,6 +40,89 @@ def cached(func: C) -> C:
         return result
 
     return wrapper  # type: ignore
+
+
+LEADING_DURATION_FIELD_REGEX = re.compile(r"[0-9]+")
+DURATION_FIELD_REGEX = re.compile(r"[0-5][0-9]")
+FRACTION_REGEX = re.compile(r"(?:\.[0-9]+)?")
+
+
+def parse_duration(text: str) -> u.Duration:
+    """
+    Parses a duration in the form "HH:MM:SS", "MM:SS" or "SS". The seconds can have a fractional
+    part, like "1:30.5".
+
+    The leading number can be arbitrarily large (like "90:00" for 90 minutes), but all following
+    numbers must have exactly 2 digits and be at most 59.
+    """
+    fields = text.split(":")
+    if len(fields) > 3:
+        raise ValueError(f"Cannot parse {text!r} as a duration")
+
+    # Only the seconds can have a fractional part
+    fields[-1], dot, fraction = fields[-1].partition(".")
+    fraction = dot + fraction
+
+    leading_field, *other_fields = fields
+    if (
+        not LEADING_DURATION_FIELD_REGEX.fullmatch(leading_field)
+        or not all(DURATION_FIELD_REGEX.fullmatch(field) for field in other_fields)
+        or not FRACTION_REGEX.fullmatch(fraction)
+    ):
+        raise ValueError(f"Cannot parse {text!r} as a duration")
+
+    # Decimal avoids rounding errors, e.g. 60 + 30.12345 isn't 90.12345 in floating point
+    total = decimal.Decimal(0)
+    for field in fields:
+        total = total * 60 + int(field)
+
+    total += decimal.Decimal("0" + fraction)
+
+    if total == total.to_integral_value():
+        return u.seconds(int(total))
+
+    return u.seconds(float(total))
+
+
+def format_duration(seconds: FloatOrDecimal, format_: str, number_format: str | None) -> str:
+    """
+    Formats a duration in the form "HH:MM:SS".
+    """
+    *_, hour_format, minute_format, second_format = ["", "", ""] + format_.split(":")
+
+    # Splitting a float into minutes and seconds exposes its representation error: 90.12345 is
+    # printed as "90.12345", but 90.12345 - 60 is printed as "30.123450000000005". Decimals don't
+    # have that problem, and going through `repr` gives us the value the float is displayed as.
+    if not isinstance(seconds, decimal.Decimal):
+        seconds = decimal.Decimal(repr(seconds))
+
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(int(minutes), 60)
+
+    # Get rid of trailing zeros, like in `1.500` or `30.0`
+    if seconds == seconds.to_integral_value():
+        seconds = int(seconds)
+    else:
+        seconds = seconds.normalize()
+
+    show_hours = bool(hours or hour_format)
+    show_minutes = bool(minutes or minute_format or show_hours)
+
+    # Once a larger unit is displayed, smaller ones need 2 digits, regardless of the format. ("1:2:5"
+    # would be unreadable.)
+    seconds_str = format(seconds, number_format or "")
+    integer_part, dot, fraction = seconds_str.partition(".")
+    seconds_digits = 2 if show_minutes else len(second_format)
+    parts = [integer_part.zfill(seconds_digits) + dot + fraction]
+
+    if show_minutes:
+        minutes_digits = 2 if show_hours else len(minute_format)
+        parts.append(str(minutes).zfill(minutes_digits))
+
+    if show_hours:
+        parts.append(str(hours).zfill(len(hour_format)))
+
+    return ":".join(reversed(parts))
 
 
 SYMBOL_REGEX = re.compile(r"(^|[*/])([^*/]+?)([⁻⁺⁰¹²³⁴⁵⁶⁷⁸⁹]*)\s*(?=[*/]|$)")

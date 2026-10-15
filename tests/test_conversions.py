@@ -1,3 +1,4 @@
+import decimal
 import typing as t
 
 import pytest
@@ -70,6 +71,9 @@ def test_repr(value: u.Quantity, expected_result: str):
         (u.square_meters(3_000_000), "3 km²"),
         (u.meters(-3), "-3 m"),
         (u.meters(-3000), "-3 km"),
+        (u.seconds(0.0015), "1.5 ms"),
+        (u.seconds(0.000002), "2 µs"),
+        (u.seconds(-0.0015), "-1.5 ms"),
     ],
     ids=lambda value: repr(value),
 )
@@ -90,6 +94,21 @@ def test_str(value: u.Quantity, expected_result: t.Union[str, t.Sequence[str]]):
         (u.kilometers(1), "m:dam", "100 dam"),
         (u.meters(1), "dam:km", "0.1 dam"),
         (u.meters(1), "0.2f dam:km", "0.10 dam"),
+        (u.seconds(90), "", "90 s"),
+        (u.seconds(90), ":", "1:30"),
+        (u.seconds(90), "MM:SS", "01:30"),
+        (u.seconds(90), "H:MM:SS", "0:01:30"),
+        (u.seconds(90), "HH:MM:SS", "00:01:30"),
+        (u.seconds(90.12345), ".2f :", "1:30.12"),
+        (u.seconds(90.12345), ":", "1:30.12345"),
+        (u.seconds(3725), ":", "1:02:05"),
+        (u.seconds(5), "SS", "05"),
+        (u.seconds(5), "M:SS", "0:05"),
+        (u.seconds(61.5), "MM:SS", "01:01.5"),
+        (u.minutes(1.5), "MM:SS", "01:30"),
+        (u.hours(1), "H:MM:SS", "1:00:00"),
+        (u.ms(1500), "M:SS", "0:01.5"),
+        (u.seconds(decimal.Decimal("90.5")), ":", "1:30.5"),
     ],
     ids=lambda value: repr(value),
 )
@@ -133,3 +152,63 @@ def test_parse(text: str, quantity: type[u.Quantity], expected_result: u.Quantit
 def test_parse_as_wrong_quantity(text: str, quantity: type[u.Quantity]):
     with pytest.raises(ValueError):
         quantity.parse(text)
+
+
+@pytest.mark.parametrize(
+    "text, expected_result",
+    [
+        ("30", u.seconds(30)),
+        ("1:30", u.seconds(90)),
+        ("1:02:05", u.seconds(3725)),
+        ("30.5", u.seconds(30.5)),
+        ("1:30.5", u.seconds(90.5)),
+        ("1:02:05.25", u.seconds(3725.25)),
+        ("0:00.001", u.ms(1)),
+        ("1:59.999", u.seconds(119.999)),
+        # The leading number isn't capped
+        ("90", u.seconds(90)),
+        ("90:00", u.minutes(90)),
+        ("100:00:00", u.hours(100)),
+    ],
+)
+def test_parse_colon_duration(text: str, expected_result: u.Duration):
+    assert u.Duration.parse(text) == expected_result
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "1:2:3:4",
+        "1.5:30",
+        "1:30.",
+        "1:30.5.5",
+        ":30",
+        "1::30",
+        "1:3x",
+        "1:-30",
+        "1:30e1",
+        # Numbers after the first one must be between 00 and 59...
+        "1:60",
+        "1:75",
+        "1:60:00",
+        "1:00:60",
+        # ... and have exactly 2 digits
+        "1:5",
+        "1:005",
+        "1:7.5",
+        "1:5:00",
+    ],
+)
+def test_parse_invalid_colon_duration(text: str):
+    with pytest.raises(ValueError):
+        u.Duration.parse(text)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [u.seconds(90.12345), u.seconds(3725.5), u.ms(1500), u.minutes(2.25), u.hours(100)],
+    ids=repr,
+)
+@pytest.mark.parametrize("format_", [":", "SS", "M:SS", "MM:SS", "H:MM:SS", "HH:MM:SS"])
+def test_colon_duration_round_trip(value: u.Duration, format_: str):
+    assert u.Duration.parse(format(value, format_)) == value

@@ -76,8 +76,13 @@ def test_typing_is_correct(expr: str):
 @pytest.mark.parametrize(
     "expr",
     [
-        "d: Distance = seconds(3)",
-        "s: Speed = seconds(5) / meters(2)",
+        "d: u.Distance = u.seconds(3)",
+        "s: u.Speed = u.seconds(5) / u.meters(2)",
+        "u.seconds(1) < u.meters(1)",
+        "u.seconds(1) <= u.meters(1)",
+        "u.seconds(1) > u.meters(1)",
+        "u.seconds(1) >= u.meters(1)",
+        "u.seconds(1) + 5",
     ],
 )
 def test_typing_error(expr: str):

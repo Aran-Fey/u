@@ -1,6 +1,12 @@
+import operator
+import typing as t
+
 import pytest
 
 import u
+
+
+ORDERING_OPERATORS = [operator.lt, operator.le, operator.gt, operator.ge]
 
 
 @pytest.mark.parametrize(
@@ -25,6 +31,64 @@ def test_addition(result: u.Quantity, expected_result: u.Quantity):
 )
 def test_subtraction(result: u.Quantity, expected_result: u.Quantity):
     assert result == expected_result
+
+
+def test_zero_arithmetic():
+    assert u.seconds(3) + 0 == u.seconds(3)
+    assert 0 + u.seconds(3) == u.seconds(3)
+    assert u.seconds(3) - 0 == u.seconds(3)
+    assert 0 - u.seconds(3) == u.seconds(-3)
+
+
+@pytest.mark.parametrize(
+    "op", [operator.add, operator.sub], ids=lambda op: op.__name__
+)
+@pytest.mark.parametrize("number", [5, 2.5])
+def test_arithmetic_with_nonzero_number_raises_type_error(
+    op: t.Callable[[t.Any, t.Any], t.Any], number: float
+):
+    with pytest.raises(TypeError):
+        op(u.seconds(3), number)
+
+    with pytest.raises(TypeError):
+        op(number, u.seconds(3))
+
+
+@pytest.mark.parametrize("op", [operator.add, operator.sub], ids=lambda op: op.__name__)
+@pytest.mark.parametrize(
+    "a, b",
+    [(u.seconds(1), u.meters(1)), (u.meters(1), u.seconds(1)), (u.mps(1), u.meters(1))],
+    ids=repr,
+)
+def test_arithmetic_with_incompatible_quantities_raises_type_error(
+    op: t.Callable[[t.Any, t.Any], t.Any], a: u.Quantity, b: u.Quantity
+):
+    with pytest.raises(TypeError):
+        op(a, b)
+
+
+@pytest.mark.parametrize("op", ORDERING_OPERATORS, ids=lambda op: op.__name__)
+def test_ordering_incompatible_quantities_raises_type_error(
+    op: t.Callable[[t.Any, t.Any], bool],
+):
+    with pytest.raises(TypeError):
+        op(u.seconds(1), u.meters(1))
+
+
+@pytest.mark.parametrize(
+    "op, expected",
+    [(operator.lt, True), (operator.le, True), (operator.gt, False), (operator.ge, False)],
+    ids=lambda value: getattr(value, "__name__", repr(value)),
+)
+def test_ordering_compatible_quantities(op: t.Callable[[t.Any, t.Any], bool], expected: bool):
+    assert op(u.seconds(59), u.minutes(1)) is expected
+    assert op(u.seconds(-1), 0) is expected
+
+
+def test_equality_of_incompatible_quantities_is_false():
+    # Like `1 == "1"`, this is not an error
+    assert u.seconds(1) != u.meters(1)
+    assert not (u.seconds(1) == u.meters(1))
 
 
 @pytest.mark.parametrize(

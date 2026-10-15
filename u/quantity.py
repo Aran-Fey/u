@@ -9,7 +9,14 @@ import typing_extensions as t
 
 import u
 
-from ._utils import UNION_TYPES, ExponentDict, str_exponent
+from ._utils import (
+    UNION_TYPES,
+    ExponentDict,
+    str_exponent,
+    parse_duration,
+    parse_symbol,
+    format_duration,
+)
 from .capital_quantities import QUANTITY, DIV, MUL, MUL_
 from .maths import FloatOrDecimal, TypePreference, add, subtract, multiply, divide
 
@@ -30,6 +37,8 @@ NUMBER_WITH_UNIT_REGEX = re.compile(r"([+-]?[0-9._]+)(.*)")
 # We support a subset of python's usual formatting spec. Reference:
 # https://docs.python.org/3/library/string.html#formatspec
 NUMBER_FORMAT_SPEC_REGEX = re.compile(r"([ +-]?z?#?0?\d*[._]?(?:\.\d+)?.?) (.*)")
+
+DURATION_FORMATS = {":", "SS", "M:SS", "MM:SS", "H:MM:SS", "HH:MM:SS"}
 
 
 QUANTITY_ALIASES_BY_EXPONENTS = dict[FrozenExponents, "QuantityAlias"]()
@@ -55,8 +64,11 @@ class QuantityAlias(types.GenericAlias):
         if name in __class__.__annotations__:
             return vars(self)[name]
 
-        if name in vars(__class__):
-            return vars(__class__)[name].__get__(self)
+        # Only redirect descriptors (methods and properties). Plain class attributes like
+        # `__module__` must be looked up normally.
+        attr = vars(__class__).get(name)
+        if hasattr(attr, "__get__"):
+            return attr.__get__(self)  # type: ignore
 
         return super().__getattribute__(name)
 
@@ -72,7 +84,7 @@ class QuantityAlias(types.GenericAlias):
         return unit
 
     def parse(self, *args, **kwargs):
-        return Quantity.parse.__func__(self, *args, **kwargs)  # type: ignore
+        return Quantity.parse.__func__(self, *args, **kwargs)
 
     def typecheck(self, value: Quantity, /) -> bool:
         return value.quantity == self
@@ -112,7 +124,10 @@ def get_exponents(quantity_caps: type[QUANTITY]) -> ExponentDict:
 
     _add_exponents(quantity_caps, exponents)
 
-    return ExponentDict(exponents)
+    # Drop quantities that cancelled out (like DURATION in DURATION/DURATION)
+    return ExponentDict(
+        {quantity: exponent for quantity, exponent in exponents.items() if exponent != 0}
+    )
 
 
 def _add_exponents(quantity, exponents: collections.defaultdict[type[QUANTITY], int]) -> None:
@@ -235,7 +250,12 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
     """
 
     @classmethod  # This is only here to shut up the type checker
-    def __class_getitem(cls, quantity_caps) -> QuantityAlias:
+    def __class_getitem(cls, quantity_caps: t.Any) -> QuantityAlias:
+        # `Quantity[X]` and `Quantity[(X,)]` must be equivalent. `typing.get_type_hints` relies on
+        # this, since it re-creates aliases with `alias.__origin__[alias.__args__]`.
+        if isinstance(quantity_caps, tuple) and len(quantity_caps) == 1:
+            quantity_caps = quantity_caps[0]
+
         # Make sure that all equivalent quantities return the same QuantityAlias
         try:
             if isinstance(quantity_caps, t.TypeVar):
@@ -354,7 +374,21 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         >>> u.Duration.parse('5 km')
         ValueError: Cannot parse '5 km' as a Duration
         ```
+
+        Durations can also be parsed from input of the form "HH:MM:SS", "MM:SS" or "SS":
+
+        ```python
+        >>> u.Duration.parse('1:30')
+        90 s
+        ```
         """
+        if cls == u.Duration:
+            try:
+                result = parse_duration(text)
+            except ValueError:
+                pass
+            else:
+                return result  # type: ignore
 
         match = NUMBER_WITH_UNIT_REGEX.match(text)
         if not match:
@@ -408,17 +442,29 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         """
         return self.quantity == other.quantity
 
+    def __abs__(self) -> Quantity[Q_co]:
+        return Quantity(abs(self._value), self._unit)
+
     def __bool__(self) -> bool:
         return bool(self._value)
 
     def __float__(self) -> float:
-        return float(self._value) * float(self._unit.multiplier)
+        # This is the canonical value used for comparisons and hashing, so it must not depend on
+        # which unit the quantity was created with. Multiplying in Decimal and rounding only once
+        # at the end makes things like `u.inches(1) == u.centimeters(2.54)` work.
+        return float(multiply(self._value, self._unit.multiplier, decimal.Decimal))
 
     def __neg__(self) -> Quantity[Q_co]:
         return Quantity(-self._value, self._unit)
 
     def __hash__(self) -> int:
-        return hash((self._value, self._unit))
+        value = float(self)
+
+        # Zero is equal to `0`, so it must also have the same hash
+        if value == 0:
+            return hash(0)
+
+        return hash((self.quantity, value))
 
     def __eq__(self, quantity: object, /) -> bool:
         if quantity == 0:
@@ -429,70 +475,78 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         elif not self.is_compatible_with(quantity):
             return False
         else:
-            num = self.to_number(quantity._unit)
-            expected = float(quantity._value)
+            num = float(self)
+            expected = float(quantity)
 
         return num == expected
 
-    def __lt__(self, quantity: NullableQuantity[Q_co], /) -> bool:
+    def _ordering_operands(self, quantity: object) -> tuple[float, float] | None:
+        """
+        Returns the two numbers to compare, or `None` if `quantity` isn't something we can be
+        compared with. Unlike equality, ordering two different quantities is an error (just like
+        `1 < "1"`), since it's always a bug.
+        """
         if quantity == 0:
-            num = float(self)
-            expected = 0.0
-        elif not isinstance(quantity, __class__):
-            return NotImplemented
-        elif not self.is_compatible_with(quantity):
-            return False
-        else:
-            num = self.to_number(quantity._unit)
-            expected = float(quantity._value)
+            return float(self), 0.0
 
+        if not isinstance(quantity, __class__):
+            return None
+
+        self._check_compatible(quantity, "compare")
+
+        return float(self), float(quantity)
+
+    def _check_compatible(self, quantity: Quantity, operation: str) -> None:
+        """
+        Raises a `TypeError` if `quantity` measures something different than `self`. Mixing
+        different quantities (like a duration and a distance) is a type error, just like the type
+        checker reports it.
+        """
+        if not self.is_compatible_with(quantity):
+            raise TypeError(
+                f"Cannot {operation} {self} (a {self.quantity}) and {quantity} (a {quantity.quantity})"
+            )
+
+    def __lt__(self, quantity: NullableQuantity[Q_co], /) -> bool:
+        operands = self._ordering_operands(quantity)
+        if operands is None:
+            return NotImplemented
+
+        num, expected = operands
         return num < expected
 
-    def __le__(self, quantity: object, /) -> bool:
-        if quantity == 0:
-            num = float(self)
-            expected = 0.0
-        elif not isinstance(quantity, __class__):
+    def __le__(self, quantity: NullableQuantity[Q_co], /) -> bool:
+        operands = self._ordering_operands(quantity)
+        if operands is None:
             return NotImplemented
-        elif not self.is_compatible_with(quantity):
-            return False
-        else:
-            num = self.to_number(quantity._unit)
-            expected = float(quantity._value)
 
+        num, expected = operands
         return num <= expected
 
-    def __gt__(self, quantity: object, /) -> bool:
-        if quantity == 0:
-            num = float(self)
-            expected = 0.0
-        elif not isinstance(quantity, __class__):
+    def __gt__(self, quantity: NullableQuantity[Q_co], /) -> bool:
+        operands = self._ordering_operands(quantity)
+        if operands is None:
             return NotImplemented
-        elif not self.is_compatible_with(quantity):
-            return False
-        else:
-            num = self.to_number(quantity._unit)
-            expected = float(quantity._value)
 
+        num, expected = operands
         return num > expected
 
-    def __ge__(self, quantity: object, /) -> bool:
-        if quantity == 0:
-            num = float(self)
-            expected = 0.0
-        elif not isinstance(quantity, __class__):
+    def __ge__(self, quantity: NullableQuantity[Q_co], /) -> bool:
+        operands = self._ordering_operands(quantity)
+        if operands is None:
             return NotImplemented
-        elif not self.is_compatible_with(quantity):
-            return False
-        else:
-            num = self.to_number(quantity._unit)
-            expected = float(quantity._value)
 
+        num, expected = operands
         return num >= expected
 
     def __add__(self, quantity: NullableQuantity[Q_co], /) -> Quantity[Q_co]:
         if quantity == 0:
             return self
+
+        if not isinstance(quantity, __class__):
+            return NotImplemented
+
+        self._check_compatible(quantity, "add")
 
         return Quantity(
             add(self._value, quantity._to_number(self._unit)),
@@ -505,13 +559,20 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
         if quantity == 0:
             return self
 
+        if not isinstance(quantity, __class__):
+            return NotImplemented
+
+        self._check_compatible(quantity, "subtract")
+
         return Quantity(
             subtract(self._value, quantity.to_number(self._unit)),
             self._unit,
         )
 
     def __rsub__(self, zero: t.Literal[0], /) -> Quantity[Q_co]:
-        assert zero == 0
+        if zero != 0:
+            return NotImplemented
+
         return Quantity(-self._value, self._unit)
 
     @t.overload
@@ -528,6 +589,9 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             )
         else:
             return Quantity(multiply(self._value, other), self._unit)
+
+    def __rmul__(self, number: float, /) -> Quantity[Q_co]:
+        return Quantity(multiply(number, self._value), self._unit)
 
     @t.overload
     def __truediv__(self, number: float, /) -> Quantity[Q_co]: ...
@@ -571,6 +635,10 @@ class Quantity(t.Generic[Q_co], metaclass=QuantityMeta):
             number_format, format_ = match.groups()
         else:
             number_format = None
+
+        if self.quantity == u.Duration and format_ in DURATION_FORMATS:
+            seconds = self._to_number(u.seconds)  # type: ignore (we know this is a Duration)
+            return format_duration(seconds, format_, number_format)
 
         if ":" in format_:
             min_unit_symbol, max_unit_symbol = format_.split(":", 1)
@@ -684,8 +752,14 @@ def _find_most_suitable_unit_and_prefix(
 
     # There are a few situations where we'll try to add a prefix:
     # - The largest available unit was selected
+    # - The smallest available unit was selected, but it's still too large (like 0.0015 seconds).
+    #   Only simple units are eligible, since compound units like km/h can't take another prefix.
     # - There is a huge gap between the selected unit and the next one, like meter and lightsecond.
-    add_prefix = unit is sorted_units[-1]
+    add_prefix = unit is sorted_units[-1] or (
+        unit is sorted_units[0]
+        and unit.multiplier ** abs(exponent) > abs(value)
+        and _is_simple_symbol(unit.symbol)
+    )
     if not add_prefix:
         selected_index = sorted_units.index(unit)
         try:
@@ -704,6 +778,11 @@ def _find_most_suitable_unit_and_prefix(
         )
 
     return unit**exponent
+
+
+def _is_simple_symbol(symbol: str) -> bool:
+    exponents = parse_symbol(symbol)
+    return len(exponents) == 1 and next(iter(exponents.values())) == 1
 
 
 T = t.TypeVar("T", "u.Unit", "u.Prefix")
