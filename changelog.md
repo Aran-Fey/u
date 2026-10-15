@@ -45,6 +45,9 @@
   with multiple factors are written as "kg/(m*s²)", and prefixed groups like "k(m²)" can be
   parsed. "m/s/A" can still be parsed. Every generated symbol can now be parsed again.
 - Fix the symbols of units divided by compound units, e.g. `u.m / (u.kg * u.A)` was "m*kg*A)"
+- The factors in generated symbols are now sorted (numerator first, then alphabetically), so
+  `u.m * u.s` and `u.s * u.m` are both "m*s". Previously, the symbol depended on which of them
+  was created first. Registered units like "N" or "m/s" keep their symbols.
 
 # 4.0
 

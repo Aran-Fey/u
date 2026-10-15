@@ -49,6 +49,27 @@ def test_parse_invalid_compound_unit(symbol: str):
         u.Unit.parse(symbol)
 
 
+@pytest.mark.parametrize(
+    "unit, expected_symbol",
+    [
+        # Created in "unusual" order first, to make sure the symbol doesn't depend on that
+        (u.m * u.K, "K*m"),
+        (u.K * u.m, "K*m"),
+        (u.s * u.m, "m*s"),
+        (u.m / (u.mol * u.K), "m/(K*mol)"),
+        (u.m / (u.K * u.mol), "m/(K*mol)"),
+        (u.mol * u.K**2 / u.m, "K²*mol/m"),
+        (1 / (u.mol * u.K), "K⁻¹*mol⁻¹"),
+        # Registered units keep their symbol
+        ((1 / u.s) * u.m, "m/s"),
+        (u.m * u.kg / u.s**2, "N"),
+    ],
+)
+def test_generated_symbols_are_sorted(unit: u.Unit, expected_symbol: str):
+    # Numerator first, then denominator, each sorted by code point
+    assert unit.symbol == expected_symbol
+
+
 ROUND_TRIP_UNITS = [
     u.m / (u.kg * u.A),
     u.m**2 / (u.s * u.A * u.K),

@@ -273,12 +273,16 @@ def join_symbols(symbol1: str, symbol2: str, operator: t.Literal["*", "/"]) -> s
 
 def format_symbol(powers: t.Mapping[str, int]) -> str:
     """
-    Creates a symbol like "kg*m/(s²*A)" from a mapping of symbols to exponents.
+    Creates a symbol like "kg*m/(A*s²)" from a mapping of symbols to exponents.
+
+    The factors are sorted by their symbols (numerator first), so the result doesn't depend on the
+    order in which the units were multiplied. (Units with conventional symbols that don't follow
+    this order, like "N*m", can be registered explicitly.)
     """
     powers = {
-        symbol: exponent
-        for symbol, exponent in powers.items()
-        if exponent != 0 and symbol != "1"
+        symbol: powers[symbol]
+        for symbol in sorted(powers)
+        if powers[symbol] != 0 and symbol != "1"
     }
 
     numerator = [symbol + str_exponent(exp) for symbol, exp in powers.items() if exp > 0]
